@@ -15,7 +15,7 @@ const NEBULA_BLOBS = [
 ];
 
 export default function PersonasPage() {
-    const { personas } = useAppStore();
+    const { personas, removePersona } = useAppStore();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
 
@@ -27,6 +27,10 @@ export default function PersonasPage() {
     const openEdit = (persona: Persona) => {
         setEditingPersona(persona);
         setModalOpen(true);
+    };
+
+    const handleArchive = async (persona: Persona) => {
+        await removePersona(persona.id);
     };
 
     // Pad with empty slots up to MAX_PERSONAS
@@ -117,7 +121,7 @@ export default function PersonasPage() {
                 }}
             >
                 {personas.map((persona, i) => (
-                    <PersonaCard key={persona.id} persona={persona} index={i} onEdit={openEdit} />
+                    <PersonaCard key={persona.id} persona={persona} index={i} onEdit={openEdit} onArchive={handleArchive} />
                 ))}
                 {Array.from({ length: emptySlots }, (_, i) => (
                     <AddPersonaCard key={`empty-${i}`} index={personas.length + i} onClick={openCreate} />

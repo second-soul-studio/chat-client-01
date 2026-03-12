@@ -64,14 +64,17 @@ function ContextMenu({
     menuRef,
     onClose,
     onEdit,
+    onArchive,
 }: {
     persona: Persona;
     menuRef: React.RefObject<HTMLDivElement | null>;
     onClose: () => void;
     onEdit: () => void;
+    onArchive: () => void;
 }) {
     const [visible, setVisible] = useState(false);
     const [hovered, setHovered] = useState<number | null>(null);
+    const [confirmArchive, setConfirmArchive] = useState(false);
 
     useEffect(() => {
         requestAnimationFrame(() => setVisible(true));
@@ -112,35 +115,93 @@ function ContextMenu({
                 <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>{persona.tagline}</div>
             </div>
 
-            {MENU_ITEMS.map((item, i) => (
-                <div
-                    key={i}
-                    onMouseEnter={() => setHovered(i)}
-                    onMouseLeave={() => setHovered(null)}
-                    onClick={() => {
-                        // Customise (0) and Persona (2) open the edit form
-                        if (i === 0 || i === 2) { onEdit(); }
-                        onClose();
-                    }}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 12,
-                        padding: '10px 16px',
-                        cursor: 'pointer',
-                        background: hovered === i ? `${persona.color}12` : 'transparent',
-                        transition: 'background 0.15s',
-                    }}
-                >
-                    <span style={{ color: persona.color, fontSize: 14, width: 16, textAlign: 'center' }}>{item.icon}</span>
-                    <div>
-                        <div style={{ fontSize: 13, color: hovered === i ? '#ffffff' : 'rgba(255,255,255,0.8)', fontFamily: "'Instrument Serif', Georgia, serif", transition: 'color 0.15s' }}>
-                            {item.label}
+            {MENU_ITEMS.map((item, i) => {
+                // Archive item (index 3) — two-step confirm
+                if (i === 3) {
+                    return confirmArchive ? (
+                        <div key={i} style={{ padding: '8px 16px' }}>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8, letterSpacing: '0.05em' }}>
+                                Remove {persona.name}?
+                            </div>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button
+                                    onClick={() => setConfirmArchive(false)}
+                                    style={{
+                                        flex: 1, padding: '6px 0', borderRadius: 8,
+                                        border: '1px solid rgba(255,255,255,0.1)',
+                                        background: 'transparent', color: 'rgba(255,255,255,0.4)',
+                                        fontSize: 11, cursor: 'pointer',
+                                    }}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => { onArchive(); onClose(); }}
+                                    style={{
+                                        flex: 1, padding: '6px 0', borderRadius: 8,
+                                        border: `1px solid #D4706A55`,
+                                        background: '#D4706A22', color: '#D4706A',
+                                        fontSize: 11, cursor: 'pointer',
+                                    }}
+                                >
+                                    Remove
+                                </button>
+                            </div>
                         </div>
-                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>{item.sub}</div>
+                    ) : (
+                        <div
+                            key={i}
+                            onMouseEnter={() => setHovered(i)}
+                            onMouseLeave={() => setHovered(null)}
+                            onClick={() => setConfirmArchive(true)}
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: 12,
+                                padding: '10px 16px', cursor: 'pointer',
+                                background: hovered === i ? 'rgba(212,112,106,0.08)' : 'transparent',
+                                transition: 'background 0.15s',
+                            }}
+                        >
+                            <span style={{ color: '#D4706A', fontSize: 14, width: 16, textAlign: 'center' }}>{item.icon}</span>
+                            <div>
+                                <div style={{ fontSize: 13, color: hovered === i ? '#D4706A' : 'rgba(255,255,255,0.5)', fontFamily: "'Instrument Serif', Georgia, serif", transition: 'color 0.15s' }}>
+                                    {item.label}
+                                </div>
+                                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', letterSpacing: '0.05em' }}>{item.sub}</div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div
+                        key={i}
+                        onMouseEnter={() => setHovered(i)}
+                        onMouseLeave={() => setHovered(null)}
+                        onClick={() => {
+                            // Customise (0) and Persona (2) open the edit form
+                            if (i === 0 || i === 2) { onEdit(); }
+                            onClose();
+                        }}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 12,
+                            padding: '10px 16px',
+                            cursor: 'pointer',
+                            background: hovered === i ? `${persona.color}12` : 'transparent',
+                            transition: 'background 0.15s',
+                        }}
+                    >
+                        <span style={{ color: persona.color, fontSize: 14, width: 16, textAlign: 'center' }}>{item.icon}</span>
+                        <div>
+                            <div style={{ fontSize: 13, color: hovered === i ? '#ffffff' : 'rgba(255,255,255,0.8)', fontFamily: "'Instrument Serif', Georgia, serif", transition: 'color 0.15s' }}>
+                                {item.label}
+                            </div>
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.05em' }}>{item.sub}</div>
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
@@ -151,9 +212,10 @@ interface PersonaCardProps {
     persona: Persona;
     index: number;
     onEdit?: (persona: Persona) => void;
+    onArchive?: (persona: Persona) => void;
 }
 
-export function PersonaCard({ persona, index, onEdit }: PersonaCardProps) {
+export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardProps) {
     const navigate = useNavigate();
     const [hovered, setHovered] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
@@ -331,6 +393,7 @@ export function PersonaCard({ persona, index, onEdit }: PersonaCardProps) {
                     menuRef={menuRef}
                     onClose={() => setMenuOpen(false)}
                     onEdit={() => { onEdit?.(persona); setMenuOpen(false); }}
+                    onArchive={() => onArchive?.(persona)}
                 />
             )}
         </div>
