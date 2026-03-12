@@ -1,0 +1,61 @@
+[
+    {
+        "id": "nano-gpt",
+        "name": "nano-gpt",
+        "baseUrl": "https://nano-gpt.com/v1",
+        "apiKey": "",
+        "adapter": "openai",
+        "notes": "Flatrate API — all models at fixed monthly price. NSFW OK via API.",
+        "enabled": true,
+        "createdAt": 0
+    },
+    {
+        "id": "anthropic",
+        "name": "Anthropic",
+        "baseUrl": "https://api.anthropic.com/v1",
+        "apiKey": "",
+        "adapter": "anthropic",
+        "notes": "Direct Anthropic API. Requires anthropic-version header.",
+        "enabled": true,
+        "createdAt": 0
+    },
+    {
+        "id": "mistral",
+        "name": "Mistral AI",
+        "baseUrl": "https://api.mistral.ai/v1",
+        "apiKey": "",
+        "adapter": "openai",
+        "notes": "European provider. Supports top_k extension.",
+        "enabled": true,
+        "createdAt": 0
+    },
+    {
+        "id": "openai",
+        "name": "OpenAI",
+        "baseUrl": "https://api.openai.com/v1",
+        "apiKey": "",
+        "adapter": "openai",
+        "enabled": true,
+        "createdAt": 0
+    },
+    {
+        "id": "openrouter",
+        "name": "OpenRouter",
+        "baseUrl": "https://openrouter.ai/api/v1",
+        "apiKey": "",
+        "adapter": "openai",
+        "notes": "Aggregator — access to 200+ models via single API key.",
+        "enabled": true,
+        "createdAt": 0
+    },
+    {
+        "id": "ollama",
+        "name": "Ollama (local)",
+        "baseUrl": "http://localhost:11434/v1",
+        "apiKey": "ollama",
+        "adapter": "ollama",
+        "notes": "Local models. No key required. Full privacy.",
+        "enabled": false,
+        "createdAt": 0
+    }
+]
