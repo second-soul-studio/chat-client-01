@@ -9,11 +9,11 @@ import { OpenRouterFetcher } from './OpenRouterFetcher';
 // Using 'openai-list' for plain OpenAI-compatible providers without pricing data
 // lets users assign the right fetcher to custom providers via the key field.
 const registry: Record<string, ModelMetaFetcher> = {
-    'nano-gpt':    new NanoGptFetcher(),
-    'mistral':     new MistralFetcher(),
+    'nano-gpt': new NanoGptFetcher(),
+    'mistral': new MistralFetcher(),
     'openai-list': new OpenAIListFetcher(),
-    'openrouter':  new OpenRouterFetcher(),
-    'ollama':      new OllamaFetcher(),
+    'openrouter': new OpenRouterFetcher(),
+    'ollama': new OllamaFetcher(),
 };
 
 export function getFetcher(key: string): ModelMetaFetcher | null {

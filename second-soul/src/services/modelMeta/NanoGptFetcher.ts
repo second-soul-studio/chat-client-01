@@ -1,21 +1,33 @@
 import type { Provider } from '@/types/providers';
 import type { FetchedModel, ModelMetaFetcher } from './types';
 
-// Shape of fields we care about from nano-gpt's /v1/models response.
-// Core fields follow the OpenAI standard; pricing fields are nano-gpt-specific.
+// Detailed response shape from GET /api/v1/models?detailed=true
+// Docs: https://docs.nano-gpt.com/api-reference/endpoint/models
 interface NanoGptModelEntry {
     id: string;
     object: string;
-    context_window?: number;
-    max_completion_tokens?: number;
-    // nano-gpt-specific — present when authenticated
-    prompt_tokens_cost?: number;
-    completion_tokens_cost?: number;
+    name?: string;
+    description?: string;
+    context_length?: number;
+    max_output_tokens?: number;
+    capabilities?: {
+        vision?: boolean;
+        reasoning?: boolean;       // extended thinking
+        tool_calling?: boolean;
+        structured_output?: boolean;
+    };
+    pricing?: {
+        prompt: number;            // USD per 1M input tokens
+        completion: number;        // USD per 1M output tokens
+        currency: string;
+        unit: string;              // "per_million_tokens"
+    };
 }
 
 export class NanoGptFetcher implements ModelMetaFetcher {
     async fetchModels(provider: Provider): Promise<FetchedModel[]> {
-        const response = await fetch(`${provider.baseUrl}/models`, {
+        const url = `${provider.baseUrl}/models?detailed=true`;
+        const response = await fetch(url, {
             headers: { Authorization: `Bearer ${provider.apiKey}` },
         });
 
@@ -30,19 +42,21 @@ export class NanoGptFetcher implements ModelMetaFetcher {
             .map(m => {
                 const model: FetchedModel = {
                     slug: m.id,
-                    displayName: m.id,
-                    contextWindow: m.context_window,
-                    maxOutputTokens: m.max_completion_tokens,
+                    displayName: m.name ?? m.id,
+                    contextWindow: m.context_length,
+                    maxOutputTokens: m.max_output_tokens,
+                    supportsCot: m.capabilities?.reasoning,
+                    supportsVision: m.capabilities?.vision,
+                    functionCalling: m.capabilities?.tool_calling,
+                    notes: m.description,
                 };
 
-                // Attach pricing only when the endpoint returns cost fields
-                if (m.prompt_tokens_cost != null && m.completion_tokens_cost != null) {
+                // Pricing values are already per-1M-tokens in USD
+                if (m.pricing?.prompt != null && m.pricing.completion != null) {
                     model.pricing = {
-                        unit: 'credits',
-                        unitLabel: 'nano credits',
-                        // API returns cost per token; convert to per-1M
-                        inputPer1M: m.prompt_tokens_cost * 1_000_000,
-                        outputPer1M: m.completion_tokens_cost * 1_000_000,
+                        unit: 'usd',
+                        inputPer1M: m.pricing.prompt,
+                        outputPer1M: m.pricing.completion,
                     };
                 }
 
