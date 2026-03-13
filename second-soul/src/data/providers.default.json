@@ -62,5 +62,16 @@
         "enabled": false,
         "createdAt": 0,
         "metaFetcherKey": "ollama"
+    },
+    {
+        "id": "xai",
+        "name": "xAI (Grok)",
+        "baseUrl": "https://api.x.ai/v1",
+        "apiKey": "",
+        "adapter": "openai",
+        "notes": "Grok models by xAI. OpenAI-compatible API.",
+        "enabled": false,
+        "createdAt": 0,
+        "metaFetcherKey": "openai-list"
     }
 ]

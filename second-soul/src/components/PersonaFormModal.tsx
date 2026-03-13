@@ -51,6 +51,7 @@ const DEFAULT_FORM = {
     systemPrompt: '',
     paletteIndex: 0,
     showThinking: false,
+    thinkingEnabled: false,
     modelId: null as string | null,
 };
 
@@ -74,6 +75,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 systemPrompt: persona.systemPrompt,
                 paletteIndex: pi >= 0 ? pi : 0,
                 showThinking: persona.showThinking,
+                thinkingEnabled: persona.thinkingEnabled,
                 modelId: persona.modelId,
             };
         }
@@ -96,6 +98,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 gradient: palette.gradient,
                 online: true,
                 showThinking: form.showThinking,
+                thinkingEnabled: form.thinkingEnabled,
                 avatarUrl: null,
                 modelId: form.modelId,
             };
@@ -262,7 +265,26 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                         />
                     </div>
 
-                    {/* Actions */}
+                    {/* Thinking Enabled */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 0',
+                            marginBottom: 24,
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Enable Thinking by Default</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Use CoT / thinking mode when starting new chats</div>
+                        </div>
+                        <Toggle
+                            checked={form.thinkingEnabled}
+                            color={palette.color}
+                            onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
+                        />
+                    </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button
                             onClick={onClose}
@@ -474,6 +496,10 @@ function ModelPicker({
                                 selected={value === m.id}
                                 accentColor={accentColor}
                                 cot={m.supportsCot}
+                                cotSlug={m.cotSlug}
+                                isTee={m.isTee}
+                                favorite={m.favorite}
+                                modelId={m.id}
                                 onClick={() => { onChange(m.id); setOpen(false); }}
                             />
                         ))}
@@ -498,14 +524,19 @@ function ModelPicker({
     );
 }
 
-function ModelRow({ displayName, sub, selected, accentColor, cot, onClick }: {
+function ModelRow({ displayName, sub, selected, accentColor, cot, cotSlug, isTee, favorite, modelId, onClick }: {
     displayName: string;
     sub: string;
     selected: boolean;
     accentColor: string;
     cot?: boolean;
+    cotSlug?: string;
+    isTee?: boolean;
+    favorite?: boolean;
+    modelId?: string;
     onClick: () => void;
 }) {
+    const { updateModelConfig } = useAppStore();
     const [hov, setHov] = useState(false);
     return (
         <div
@@ -531,9 +562,9 @@ function ModelRow({ displayName, sub, selected, accentColor, cot, onClick }: {
             </div>
 
             <div style={{ minWidth: 0, flex: 1 }}>
-                <div style={{ fontSize: 13, color: selected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontSize: 13, color: selected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     {displayName}
-                    {cot && (
+                    {(cot || cotSlug) && (
                         <span style={{
                             fontSize: 9, color: accentColor,
                             border: `1px solid ${accentColor}55`, borderRadius: 4,
@@ -541,6 +572,16 @@ function ModelRow({ displayName, sub, selected, accentColor, cot, onClick }: {
                             letterSpacing: '0.05em', flexShrink: 0,
                         }}>
                             CoT
+                        </span>
+                    )}
+                    {isTee && (
+                        <span style={{
+                            fontSize: 9, color: '#7abfb0',
+                            border: '1px solid rgba(122,191,176,0.4)', borderRadius: 4,
+                            padding: '1px 4px', fontFamily: "'Courier New', monospace",
+                            letterSpacing: '0.05em', flexShrink: 0,
+                        }}>
+                            TEE
                         </span>
                     )}
                 </div>
@@ -552,6 +593,22 @@ function ModelRow({ displayName, sub, selected, accentColor, cot, onClick }: {
                     {sub}
                 </div>
             </div>
+
+            {/* Favourite toggle — stops propagation so it doesn't select the model */}
+            {modelId && (
+                <button
+                    onClick={e => { e.stopPropagation(); updateModelConfig(modelId, { favorite: !favorite }); }}
+                    title={favorite ? 'Remove from favourites' : 'Add to favourites'}
+                    style={{
+                        background: 'none', border: 'none', cursor: 'pointer',
+                        fontSize: 14, color: favorite ? '#C9A96E' : 'rgba(255,255,255,0.15)',
+                        padding: 4, flexShrink: 0, transition: 'color 0.15s ease',
+                    }}
+                    aria-label="Toggle favourite"
+                >
+                    ★
+                </button>
+            )}
         </div>
     );
 }

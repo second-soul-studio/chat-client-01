@@ -55,15 +55,24 @@ export interface SendMessageOptions {
     persona: Persona;
     provider: Provider;
     model: ModelConfig;
+    thinkingEnabled: boolean;
     onChunk?: (content: string) => void;
 }
 
 export async function sendMessage(options: SendMessageOptions): Promise<{ content: string; thinking?: string }> {
-    const { messages, settings, persona, provider, model, onChunk } = options;
+    const { messages, settings, persona, provider, model, thinkingEnabled, onChunk } = options;
 
-    const systemPrompt = [settings.globalSystemPrompt, persona.systemPrompt]
-        .filter(Boolean)
-        .join('\n\n');
+    // Build system prompt: global → persona → per-model user addition
+    const systemPrompt = [
+        settings.globalSystemPrompt,
+        persona.systemPrompt,
+        model.userSystemPrompt,
+    ].filter(Boolean).join('\n\n');
+
+    // When thinking is requested and the model has a dedicated CoT slug (nano-gpt pattern),
+    // swap to that slug. Otherwise use the base slug.
+    const effectiveSlug = (thinkingEnabled && model.cotSlug) ? model.cotSlug : model.slug;
+    const effectiveCot = thinkingEnabled && (!!model.cotSlug || model.supportsCot);
 
     const maxContextTokens = 8000; // TODO: make configurable per model
     const contextMessages = buildContextWindow(
@@ -81,7 +90,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         return sendAnthropicMessage({
             baseUrl: provider.baseUrl,
             apiKey: provider.apiKey,
-            modelSlug: model.slug,
+            modelSlug: effectiveSlug,
             systemPrompt,
             contextMessages,
             temperature,
@@ -95,13 +104,13 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     return sendOpenAIMessage({
         baseUrl: provider.baseUrl,
         apiKey: provider.apiKey,
-        modelSlug: model.slug,
+        modelSlug: effectiveSlug,
         systemPrompt,
         contextMessages,
         temperature,
         topP,
         maxOutputTokens,
-        supportsCot: model.supportsCot,
+        supportsCot: effectiveCot,
         onChunk,
     });
 }

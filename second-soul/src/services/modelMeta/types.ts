@@ -5,16 +5,18 @@ import type { Provider } from '@/types/providers';
 export interface FetchedModel {
     slug: string;
     displayName: string;
+    cotSlug?: string;        // separate slug for CoT mode (nano-gpt :thinking pattern)
     contextWindow?: number;
     maxOutputTokens?: number;
     supportsCot?: boolean;
+    isTee?: boolean;         // runs in a Trusted Execution Environment
     supportsVision?: boolean;
     functionCalling?: boolean;
     pricing?: {
         unit: 'usd' | 'credits';
-        unitLabel?: string;      // e.g. "nano credits"
-        inputPer1M: number;      // cost per 1 million input tokens
-        outputPer1M: number;     // cost per 1 million output tokens
+        unitLabel?: string;
+        inputPer1M: number;
+        outputPer1M: number;
     };
     notes?: string;
 }

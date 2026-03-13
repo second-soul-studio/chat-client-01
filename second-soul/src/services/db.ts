@@ -1,6 +1,7 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
 import type { Chat, Persona, AppSettings } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
+import type { FetchedModel } from '@/services/modelMeta/types';
 import defaultProviders from '@/data/providers.default.json';
 import defaultModels from '@/data/models.default.json';
 
@@ -27,6 +28,12 @@ interface SecondSoulDB extends DBSchema {
         value: ModelConfig;
         indexes: { 'by-provider': string };
     };
+    // Slug-keyed metadata cache populated by fetchers.
+    // Used as reference when manually adding models for providers without a fetcher.
+    globalModelMeta: {
+        key: string;             // = FetchedModel.slug
+        value: FetchedModel & { source: string; updatedAt: number };
+    };
 }
 
 let dbInstance: IDBPDatabase<SecondSoulDB> | null = null;
@@ -34,18 +41,23 @@ let dbInstance: IDBPDatabase<SecondSoulDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<SecondSoulDB>> {
     if (dbInstance) return dbInstance;
 
-    dbInstance = await openDB<SecondSoulDB>('second-soul', 1, {
-        upgrade(db) {
-            const chatStore = db.createObjectStore('chats', { keyPath: 'id' });
-            chatStore.createIndex('by-persona', 'personaId');
-            chatStore.createIndex('by-updated', 'updatedAt');
+    dbInstance = await openDB<SecondSoulDB>('second-soul', 2, {
+        upgrade(db, oldVersion) {
+            if (oldVersion < 1) {
+                const chatStore = db.createObjectStore('chats', { keyPath: 'id' });
+                chatStore.createIndex('by-persona', 'personaId');
+                chatStore.createIndex('by-updated', 'updatedAt');
 
-            db.createObjectStore('personas', { keyPath: 'id' });
-            db.createObjectStore('settings');
-            db.createObjectStore('providers', { keyPath: 'id' });
+                db.createObjectStore('personas', { keyPath: 'id' });
+                db.createObjectStore('settings');
+                db.createObjectStore('providers', { keyPath: 'id' });
 
-            const modelStore = db.createObjectStore('modelConfigs', { keyPath: 'id' });
-            modelStore.createIndex('by-provider', 'providerId');
+                const modelStore = db.createObjectStore('modelConfigs', { keyPath: 'id' });
+                modelStore.createIndex('by-provider', 'providerId');
+            }
+            if (oldVersion < 2) {
+                db.createObjectStore('globalModelMeta');
+            }
         },
     });
 
@@ -164,4 +176,30 @@ export async function getModelsForProvider(providerId: string): Promise<ModelCon
 export async function saveModelConfig(model: ModelConfig): Promise<void> {
     const db = await getDB();
     await db.put('modelConfigs', model);
+}
+
+export async function deleteModelConfig(id: string): Promise<void> {
+    const db = await getDB();
+    await db.delete('modelConfigs', id);
+}
+
+// ─── Global Model Meta Cache ──────────────────────────────────────────────────
+
+export async function putGlobalModelMeta(
+    slug: string,
+    meta: FetchedModel,
+    source: string,
+): Promise<void> {
+    const db = await getDB();
+    await db.put('globalModelMeta', { ...meta, source, updatedAt: Date.now() }, slug);
+}
+
+export async function getGlobalModelMeta(slug: string) {
+    const db = await getDB();
+    return db.get('globalModelMeta', slug);
+}
+
+export async function getAllGlobalModelMeta() {
+    const db = await getDB();
+    return db.getAll('globalModelMeta');
 }

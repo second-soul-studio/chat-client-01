@@ -12,6 +12,7 @@ export interface Persona {
     online: boolean;
     modelId: string | null;         // references ModelConfig.id; null = use global default
     showThinking: boolean;          // whether CoT block is visible for this persona
+    thinkingEnabled: boolean;       // whether CoT is requested by default for this persona
     paramOverrides?: {
         temperature?: number;
         topP?: number;

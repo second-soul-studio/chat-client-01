@@ -22,6 +22,8 @@ export default function ChatPage() {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [input, setInput] = useState('');
     const [error, setError] = useState<string | null>(null);
+    // Thinking starts at persona's default; user can flip it per conversation
+    const [thinkingEnabled, setThinkingEnabled] = useState(() => persona?.thinkingEnabled ?? false);
 
     // Initialise chat
     useEffect(() => {
@@ -60,7 +62,6 @@ export default function ChatPage() {
 
         addMessage(userMessage);
 
-        // Resolve provider + model
         const modelId = persona.modelId ?? settings.defaultModelId;
         const model = modelId ? modelConfigs.find(m => m.id === modelId) : null;
         const provider = model ? providers.find(p => p.id === model.providerId && p.enabled) : null;
@@ -87,6 +88,7 @@ export default function ChatPage() {
                 persona,
                 provider,
                 model,
+                thinkingEnabled,
                 onChunk: (content) => {
                     updateLastAssistantMessage(content);
                 },
@@ -124,6 +126,11 @@ export default function ChatPage() {
     }
 
     const messages = activeChat?.messages ?? [];
+
+    // Resolve active model to decide whether to show the thinking toggle
+    const activeModelId = persona.modelId ?? settings?.defaultModelId;
+    const activeModel = activeModelId ? modelConfigs.find(m => m.id === activeModelId) : null;
+    const cotAvailable = !!activeModel && (activeModel.supportsCot || !!activeModel.cotSlug);
 
     return (
         <div
@@ -279,6 +286,38 @@ export default function ChatPage() {
                             paddingBottom: 6,
                         }}
                     />
+
+                    {/* Thinking toggle — only shown when model supports CoT */}
+                    {cotAvailable && (
+                        <button
+                            onClick={() => setThinkingEnabled(v => !v)}
+                            title={thinkingEnabled ? 'Thinking on — click to disable' : 'Thinking off — click to enable'}
+                            style={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: '50%',
+                                border: 'none',
+                                background: thinkingEnabled
+                                    ? `${persona.color}33`
+                                    : 'transparent',
+                                color: thinkingEnabled
+                                    ? persona.color
+                                    : 'rgba(255,255,255,0.2)',
+                                cursor: 'pointer',
+                                fontSize: 16,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                                transition: 'all 0.2s ease',
+                            }}
+                            aria-label="Toggle thinking"
+                            aria-pressed={thinkingEnabled}
+                        >
+                            ✦
+                        </button>
+                    )}
+
                     <button
                         onClick={handleSend}
                         disabled={isStreaming || !input.trim()}

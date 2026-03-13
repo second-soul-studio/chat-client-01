@@ -18,7 +18,8 @@ export interface ModelConfig {
     id: string;                     // composite: "providerId/slug"
     providerId: string;
     displayName: string;
-    slug: string;                   // exact string sent to the API
+    slug: string;                   // exact string sent to the API (non-thinking variant)
+    cotSlug?: string;               // slug to use when thinking is enabled (e.g. "model:thinking" on nano-gpt)
     contextSize: number;
     defaultTemperature: number;
     defaultTopP: number;
@@ -26,9 +27,12 @@ export interface ModelConfig {
     defaultTopK?: number;
     maxOutputTokens: number;
     supportsStreaming: boolean;
-    supportsCot: boolean;           // extended thinking / <think> tags
+    supportsCot: boolean;           // can produce CoT output (via <think> tags or cotSlug)
+    isTee?: boolean;                // runs in a Trusted Execution Environment
     favorite: boolean;
-    notes?: string;
+    notes?: string;                 // provider-sourced description
+    userSystemPrompt?: string;      // user-added extra system prompt appended when this model is active
+    userNotes?: string;             // user's own notes about this model
     pricing?: {
         unit: 'usd' | 'credits';
         unitLabel?: string;         // e.g. "nano credits"

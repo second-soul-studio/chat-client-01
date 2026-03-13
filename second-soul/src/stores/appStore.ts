@@ -7,6 +7,7 @@ import {
     getPersonas, savePersona, deletePersona as dbDeletePersona,
     getProviders, saveProvider, deleteProvider as dbDeleteProvider,
     getModelConfigs, getModelsForProvider, saveModelConfig,
+    putGlobalModelMeta,
     getChatsForPersona, saveChat, deleteChat as dbDeleteChat,
     getChat,
 } from '@/services/db';
@@ -36,6 +37,7 @@ interface AppState {
     // ─── Model Configs ────────────────────────────────────────────────────────
     modelConfigs: ModelConfig[];
     syncProviderModels: (providerId: string) => Promise<{ added: number; updated: number }>;
+    updateModelConfig: (id: string, partial: Partial<ModelConfig>) => Promise<void>;
 
     // ─── Active Chat ──────────────────────────────────────────────────────────
     activePersonaId: string | null;
@@ -141,13 +143,19 @@ export const useAppStore = create<AppState>((set, get) => ({
             const id = `${providerId}/${fm.slug}`;
             const prev = existingMap.get(id);
 
+            // Write to global slug-based meta cache (for cross-provider reference)
+            await putGlobalModelMeta(fm.slug, fm, providerId);
+
             if (prev) {
-                // Upsert: update API-sourced fields; preserve manual overrides
+                // Upsert: refresh API-sourced fields; preserve user-authored fields
                 await saveModelConfig({
                     ...prev,
                     displayName: fm.displayName,
+                    cotSlug: fm.cotSlug ?? prev.cotSlug,
                     contextSize: fm.contextWindow ?? prev.contextSize,
                     maxOutputTokens: fm.maxOutputTokens ?? prev.maxOutputTokens,
+                    supportsCot: fm.supportsCot ?? prev.supportsCot,
+                    isTee: fm.isTee ?? prev.isTee,
                     ...(fm.pricing !== undefined && { pricing: fm.pricing }),
                     ...(fm.notes !== undefined && { notes: fm.notes }),
                 });
@@ -158,6 +166,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                     providerId,
                     displayName: fm.displayName,
                     slug: fm.slug,
+                    cotSlug: fm.cotSlug,
                     contextSize: fm.contextWindow ?? 4096,
                     defaultTemperature: 0.7,
                     defaultTopP: 1,
@@ -165,6 +174,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                     maxOutputTokens: fm.maxOutputTokens ?? 4096,
                     supportsStreaming: true,
                     supportsCot: fm.supportsCot ?? false,
+                    isTee: fm.isTee,
                     favorite: false,
                     ...(fm.pricing !== undefined && { pricing: fm.pricing }),
                     ...(fm.notes !== undefined && { notes: fm.notes }),
@@ -177,6 +187,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ modelConfigs });
 
         return { added, updated };
+    },
+
+    async updateModelConfig(id, partial) {
+        const prev = get().modelConfigs.find(m => m.id === id);
+        if (!prev) return;
+        const updated = { ...prev, ...partial };
+        await saveModelConfig(updated);
+        set(s => ({ modelConfigs: s.modelConfigs.map(m => m.id === id ? updated : m) }));
     },
 
     // ─── Active Chat ─────────────────────────────────────────────────────────
