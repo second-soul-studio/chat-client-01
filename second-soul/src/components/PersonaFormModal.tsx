@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import Fuse from 'fuse.js';
 import { useAppStore } from '@/stores/appStore';
 import type { Persona } from '@/types';
+import type { ModelConfig, Provider } from '@/types/providers';
 
 // ─── Colour Palettes ──────────────────────────────────────────────────────────
 
@@ -49,6 +51,7 @@ const DEFAULT_FORM = {
     systemPrompt: '',
     paletteIndex: 0,
     showThinking: false,
+    modelId: null as string | null,
 };
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -71,6 +74,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 systemPrompt: persona.systemPrompt,
                 paletteIndex: pi >= 0 ? pi : 0,
                 showThinking: persona.showThinking,
+                modelId: persona.modelId,
             };
         }
         return { ...DEFAULT_FORM };
@@ -93,7 +97,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 online: true,
                 showThinking: form.showThinking,
                 avatarUrl: null,
-                modelId: null,
+                modelId: form.modelId,
             };
             if (persona) {
                 await updatePersona({ ...persona, ...data });
@@ -230,6 +234,13 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                         />
                     </Field>
 
+                    {/* Model picker */}
+                    <ModelPicker
+                        value={form.modelId}
+                        onChange={id => setForm(f => ({ ...f, modelId: id }))}
+                        accentColor={palette.color}
+                    />
+
                     {/* Show thinking toggle */}
                     <div
                         style={{
@@ -294,6 +305,254 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 </div>
             </div>
         </>
+    );
+}
+
+// ─── Model Picker ─────────────────────────────────────────────────────────────
+
+function ModelPicker({
+    value,
+    onChange,
+    accentColor,
+}: {
+    value: string | null;
+    onChange: (id: string | null) => void;
+    accentColor: string;
+}) {
+    const { providers, modelConfigs } = useAppStore();
+    const [open, setOpen] = useState(false);
+    const [selectedProviderId, setSelectedProviderId] = useState<string | null>(null);
+    const [query, setQuery] = useState('');
+    const searchRef = useRef<HTMLInputElement>(null);
+
+    // Enabled providers that have at least one model config
+    const activeProviders = useMemo(
+        () => providers.filter(p => p.enabled && modelConfigs.some(m => m.providerId === p.id)),
+        [providers, modelConfigs],
+    );
+
+    const openPicker = () => {
+        const currentModel = value ? modelConfigs.find(m => m.id === value) : null;
+        const initProvider = currentModel?.providerId ?? activeProviders[0]?.id ?? null;
+        setSelectedProviderId(initProvider);
+        setQuery('');
+        setOpen(true);
+        setTimeout(() => searchRef.current?.focus(), 50);
+    };
+
+    const modelsForProvider = useMemo(
+        () => (selectedProviderId ? modelConfigs.filter(m => m.providerId === selectedProviderId) : []),
+        [modelConfigs, selectedProviderId],
+    );
+
+    const fuse = useMemo(
+        () => new Fuse(modelsForProvider, {
+            keys: ['displayName', 'slug', 'notes'],
+            threshold: 0.4,
+        }),
+        [modelsForProvider],
+    );
+
+    const results: ModelConfig[] = query.trim() ? fuse.search(query).map(r => r.item) : modelsForProvider;
+
+    const selectedModel = value ? modelConfigs.find(m => m.id === value) : null;
+    const selectedProvider = selectedModel ? providers.find(p => p.id === selectedModel.providerId) : null;
+
+    return (
+        <div style={{ marginBottom: 16 }}>
+            <label style={{
+                display: 'block', fontSize: 11, color: 'rgba(255,255,255,0.4)',
+                letterSpacing: '0.15em', textTransform: 'uppercase',
+                fontFamily: "'Courier New', monospace", marginBottom: 8,
+            }}>
+                Model
+            </label>
+
+            {/* Collapsed: current selection */}
+            {!open && (
+                <button
+                    onClick={openPicker}
+                    style={{
+                        width: '100%', padding: '12px 14px', borderRadius: 10,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'rgba(255,255,255,0.05)', color: '#fff',
+                        fontSize: 14, cursor: 'pointer', textAlign: 'left',
+                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                        gap: 12, boxSizing: 'border-box',
+                    }}
+                >
+                    <div style={{ minWidth: 0 }}>
+                        {selectedModel ? (
+                            <>
+                                <span style={{ color: '#fff' }}>{selectedModel.displayName}</span>
+                                <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', marginLeft: 8, fontFamily: "'Courier New', monospace" }}>
+                                    via {selectedProvider?.name ?? selectedModel.providerId}
+                                </span>
+                            </>
+                        ) : (
+                            <span style={{ color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>global default</span>
+                        )}
+                    </div>
+                    <span style={{ color: accentColor, fontSize: 12, flexShrink: 0 }}>change ›</span>
+                </button>
+            )}
+
+            {/* Expanded picker */}
+            {open && (
+                <div style={{
+                    border: `1px solid ${accentColor}30`,
+                    borderRadius: 12,
+                    background: 'rgba(0,0,0,0.3)',
+                    overflow: 'hidden',
+                }}>
+                    {/* Provider tabs */}
+                    <div style={{
+                        display: 'flex', overflowX: 'auto', padding: '10px 10px 0', gap: 6,
+                        borderBottom: '1px solid rgba(255,255,255,0.06)',
+                        // hide scrollbar
+                        scrollbarWidth: 'none',
+                    }}>
+                        {activeProviders.length === 0 && (
+                            <div style={{ padding: '4px 8px 10px', fontSize: 11, color: 'rgba(255,255,255,0.3)' }}>
+                                No providers configured — add one in Settings first.
+                            </div>
+                        )}
+                        {activeProviders.map((p: Provider) => (
+                            <button
+                                key={p.id}
+                                onClick={() => { setSelectedProviderId(p.id); setQuery(''); }}
+                                style={{
+                                    padding: '5px 14px', borderRadius: 20, border: 'none',
+                                    background: selectedProviderId === p.id ? accentColor : 'rgba(255,255,255,0.06)',
+                                    color: selectedProviderId === p.id ? '#07050c' : 'rgba(255,255,255,0.5)',
+                                    fontSize: 11, fontFamily: "'Courier New', monospace",
+                                    cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+                                    marginBottom: 10, letterSpacing: '0.05em',
+                                    fontWeight: selectedProviderId === p.id ? 700 : 400,
+                                    transition: 'all 0.15s ease',
+                                }}
+                            >
+                                {p.name}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Search input */}
+                    <div style={{ padding: '8px 10px' }}>
+                        <input
+                            ref={searchRef}
+                            type="text"
+                            value={query}
+                            onChange={e => setQuery(e.target.value)}
+                            placeholder="search models…"
+                            style={{ ...inputStyle(), padding: '8px 12px', fontSize: 13 }}
+                        />
+                    </div>
+
+                    {/* Model list */}
+                    <div style={{ maxHeight: 220, overflowY: 'auto', padding: '0 8px 4px' }}>
+                        {/* "Use global default" always first */}
+                        <ModelRow
+                            displayName="Global default"
+                            sub="use the model configured in Settings"
+                            selected={value === null}
+                            accentColor={accentColor}
+                            onClick={() => { onChange(null); setOpen(false); }}
+                        />
+
+                        {results.length === 0 && query.trim() && (
+                            <div style={{ padding: '12px 8px', fontSize: 12, color: 'rgba(255,255,255,0.3)', textAlign: 'center' }}>
+                                no models match "{query}"
+                            </div>
+                        )}
+
+                        {results.map((m: ModelConfig) => (
+                            <ModelRow
+                                key={m.id}
+                                displayName={m.displayName}
+                                sub={m.slug + (m.notes ? ` — ${m.notes}` : '')}
+                                selected={value === m.id}
+                                accentColor={accentColor}
+                                cot={m.supportsCot}
+                                onClick={() => { onChange(m.id); setOpen(false); }}
+                            />
+                        ))}
+                    </div>
+
+                    {/* Close */}
+                    <button
+                        onClick={() => setOpen(false)}
+                        style={{
+                            width: '100%', padding: '9px', border: 'none',
+                            borderTop: '1px solid rgba(255,255,255,0.06)',
+                            background: 'transparent', color: 'rgba(255,255,255,0.25)',
+                            fontSize: 11, cursor: 'pointer', letterSpacing: '0.12em',
+                            textTransform: 'uppercase', fontFamily: "'Courier New', monospace",
+                        }}
+                    >
+                        done
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function ModelRow({ displayName, sub, selected, accentColor, cot, onClick }: {
+    displayName: string;
+    sub: string;
+    selected: boolean;
+    accentColor: string;
+    cot?: boolean;
+    onClick: () => void;
+}) {
+    const [hov, setHov] = useState(false);
+    return (
+        <div
+            onClick={onClick}
+            onMouseEnter={() => setHov(true)}
+            onMouseLeave={() => setHov(false)}
+            style={{
+                display: 'flex', alignItems: 'center', gap: 10,
+                padding: '9px 8px', borderRadius: 8, cursor: 'pointer',
+                background: selected ? `${accentColor}18` : hov ? 'rgba(255,255,255,0.04)' : 'transparent',
+                transition: 'background 0.1s ease',
+            }}
+        >
+            {/* Radio dot */}
+            <div style={{
+                width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
+                border: selected ? `2px solid ${accentColor}` : '2px solid rgba(255,255,255,0.15)',
+                background: selected ? accentColor : 'transparent',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.15s ease',
+            }}>
+                {selected && <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#07050c' }} />}
+            </div>
+
+            <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: 13, color: selected ? '#fff' : 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {displayName}
+                    {cot && (
+                        <span style={{
+                            fontSize: 9, color: accentColor,
+                            border: `1px solid ${accentColor}55`, borderRadius: 4,
+                            padding: '1px 4px', fontFamily: "'Courier New', monospace",
+                            letterSpacing: '0.05em', flexShrink: 0,
+                        }}>
+                            CoT
+                        </span>
+                    )}
+                </div>
+                <div style={{
+                    fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2,
+                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    fontFamily: "'Courier New', monospace",
+                }}>
+                    {sub}
+                </div>
+            </div>
+        </div>
     );
 }
 
