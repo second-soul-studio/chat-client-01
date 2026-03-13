@@ -6,10 +6,11 @@ import {
     getSettings, saveSettings,
     getPersonas, savePersona, deletePersona as dbDeletePersona,
     getProviders, saveProvider, deleteProvider as dbDeleteProvider,
-    getModelConfigs,
+    getModelConfigs, getModelsForProvider, saveModelConfig,
     getChatsForPersona, saveChat, deleteChat as dbDeleteChat,
     getChat,
 } from '@/services/db';
+import { getFetcher } from '@/services/modelMeta/registry';
 
 interface AppState {
     // ─── Initialisation ───────────────────────────────────────────────────────
@@ -34,6 +35,7 @@ interface AppState {
 
     // ─── Model Configs ────────────────────────────────────────────────────────
     modelConfigs: ModelConfig[];
+    syncProviderModels: (providerId: string) => Promise<{ added: number; updated: number }>;
 
     // ─── Active Chat ──────────────────────────────────────────────────────────
     activePersonaId: string | null;
@@ -120,6 +122,62 @@ export const useAppStore = create<AppState>((set, get) => ({
     // ─── Model Configs ───────────────────────────────────────────────────────
 
     modelConfigs: [],
+
+    async syncProviderModels(providerId) {
+        const provider = get().providers.find(p => p.id === providerId);
+        if (!provider?.metaFetcherKey) throw new Error('No meta fetcher key for this provider');
+
+        const fetcher = getFetcher(provider.metaFetcherKey);
+        if (!fetcher) throw new Error(`Unknown fetcher: "${provider.metaFetcherKey}"`);
+
+        const fetched = await fetcher.fetchModels(provider);
+        const existing = await getModelsForProvider(providerId);
+        const existingMap = new Map(existing.map(m => [m.id, m]));
+
+        let added = 0;
+        let updated = 0;
+
+        for (const fm of fetched) {
+            const id = `${providerId}/${fm.slug}`;
+            const prev = existingMap.get(id);
+
+            if (prev) {
+                // Upsert: update API-sourced fields; preserve manual overrides
+                await saveModelConfig({
+                    ...prev,
+                    displayName: fm.displayName,
+                    contextSize: fm.contextWindow ?? prev.contextSize,
+                    maxOutputTokens: fm.maxOutputTokens ?? prev.maxOutputTokens,
+                    ...(fm.pricing !== undefined && { pricing: fm.pricing }),
+                    ...(fm.notes !== undefined && { notes: fm.notes }),
+                });
+                updated++;
+            } else {
+                await saveModelConfig({
+                    id,
+                    providerId,
+                    displayName: fm.displayName,
+                    slug: fm.slug,
+                    contextSize: fm.contextWindow ?? 4096,
+                    defaultTemperature: 0.7,
+                    defaultTopP: 1,
+                    topKSupport: false,
+                    maxOutputTokens: fm.maxOutputTokens ?? 4096,
+                    supportsStreaming: true,
+                    supportsCot: fm.supportsCot ?? false,
+                    favorite: false,
+                    ...(fm.pricing !== undefined && { pricing: fm.pricing }),
+                    ...(fm.notes !== undefined && { notes: fm.notes }),
+                });
+                added++;
+            }
+        }
+
+        const modelConfigs = await getModelConfigs();
+        set({ modelConfigs });
+
+        return { added, updated };
+    },
 
     // ─── Active Chat ─────────────────────────────────────────────────────────
 

@@ -2,12 +2,13 @@
     {
         "id": "nano-gpt",
         "name": "nano-gpt",
-        "baseUrl": "https://nano-gpt.com/v1",
+        "baseUrl": "https://nano-gpt.com/api/v1",
         "apiKey": "",
         "adapter": "openai",
         "notes": "Flatrate API — all models at fixed monthly price. NSFW OK via API.",
         "enabled": true,
-        "createdAt": 0
+        "createdAt": 0,
+        "metaFetcherKey": "nano-gpt"
     },
     {
         "id": "anthropic",
@@ -27,7 +28,8 @@
         "adapter": "openai",
         "notes": "European provider. Supports top_k extension.",
         "enabled": true,
-        "createdAt": 0
+        "createdAt": 0,
+        "metaFetcherKey": "mistral"
     },
     {
         "id": "openai",
@@ -36,7 +38,8 @@
         "apiKey": "",
         "adapter": "openai",
         "enabled": true,
-        "createdAt": 0
+        "createdAt": 0,
+        "metaFetcherKey": "openai-list"
     },
     {
         "id": "openrouter",
@@ -46,7 +49,8 @@
         "adapter": "openai",
         "notes": "Aggregator — access to 200+ models via single API key.",
         "enabled": true,
-        "createdAt": 0
+        "createdAt": 0,
+        "metaFetcherKey": "openrouter"
     },
     {
         "id": "ollama",
@@ -56,6 +60,7 @@
         "adapter": "ollama",
         "notes": "Local models. No key required. Full privacy.",
         "enabled": false,
-        "createdAt": 0
+        "createdAt": 0,
+        "metaFetcherKey": "ollama"
     }
 ]

@@ -11,6 +11,7 @@ export interface Provider {
     notes?: string;
     enabled: boolean;
     createdAt: number;
+    metaFetcherKey?: string;        // key into the ModelMetaFetcher registry
 }
 
 export interface ModelConfig {
@@ -28,4 +29,10 @@ export interface ModelConfig {
     supportsCot: boolean;           // extended thinking / <think> tags
     favorite: boolean;
     notes?: string;
+    pricing?: {
+        unit: 'usd' | 'credits';
+        unitLabel?: string;         // e.g. "nano credits"
+        inputPer1M: number;         // cost per 1 million input tokens
+        outputPer1M: number;        // cost per 1 million output tokens
+    };
 }

@@ -158,10 +158,25 @@ function ProviderForm({ initial, onSave, onCancel }: ProviderFormProps) {
 // ─── Provider Manager ─────────────────────────────────────────────────────────
 
 export default function ProviderManager() {
-    const { providers, addProvider, updateProvider, removeProvider } = useAppStore();
+    const { providers, addProvider, updateProvider, removeProvider, syncProviderModels } = useAppStore();
     const [adding, setAdding] = useState(false);
     const [editing, setEditing] = useState<string | null>(null);
     const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+    const [syncing, setSyncing] = useState<string | null>(null);
+    const [syncResults, setSyncResults] = useState<Record<string, string>>({});
+
+    const handleSync = async (providerId: string) => {
+        setSyncing(providerId);
+        setSyncResults(r => ({ ...r, [providerId]: '' }));
+        try {
+            const { added, updated } = await syncProviderModels(providerId);
+            setSyncResults(r => ({ ...r, [providerId]: `+${added} new · ${updated} updated` }));
+        } catch {
+            setSyncResults(r => ({ ...r, [providerId]: 'sync failed' }));
+        } finally {
+            setSyncing(null);
+        }
+    };
 
     const handleAdd = async (data: Omit<Provider, 'id' | 'createdAt'>) => {
         await addProvider(data);
@@ -214,6 +229,11 @@ export default function ProviderManager() {
                                         {provider.notes}
                                     </div>
                                 )}
+                                {syncResults[provider.id] && (
+                                    <div style={{ fontSize: 10, color: syncResults[provider.id] === 'sync failed' ? '#D4706A' : '#7abfb0', fontFamily: "'Courier New', monospace", marginTop: 2 }}>
+                                        {syncResults[provider.id]}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Toggle enabled */}
@@ -254,6 +274,32 @@ export default function ProviderManager() {
                             >
                                 ✎
                             </button>
+
+                            {/* Sync models — only shown when a fetcher is configured */}
+                            {provider.metaFetcherKey && (
+                                <button
+                                    onClick={() => handleSync(provider.id)}
+                                    disabled={syncing === provider.id || !provider.enabled}
+                                    title="Sync models from provider API"
+                                    style={{
+                                        color: syncing === provider.id ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.4)',
+                                        background: 'none',
+                                        border: 'none',
+                                        cursor: syncing === provider.id || !provider.enabled ? 'not-allowed' : 'pointer',
+                                        fontSize: 15,
+                                        padding: '4px 6px',
+                                        minWidth: 32,
+                                        minHeight: 32,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        animation: syncing === provider.id ? 'spinSlow 1s linear infinite' : 'none',
+                                    }}
+                                    aria-label="Sync models"
+                                >
+                                    ↻
+                                </button>
+                            )}
 
                             {/* Delete */}
                             {confirmDelete === provider.id ? (
