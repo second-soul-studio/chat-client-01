@@ -225,7 +225,7 @@ export function AssistantBubble({
                                 components={{
                                     code({ className, children, ...props }) {
                                         const language = /^language-(\w+)/.exec(className ?? '')?.[1] ?? '';
-                                        const isBlock = !!language || (className ?? '').startsWith('language-');
+                                        const isBlock = (className ?? '').startsWith('language-');
                                         if (isBlock) {
                                             return (
                                                 <CodeBlock
