@@ -223,59 +223,64 @@ export default function ChatPage() {
 
             {/* Messages */}
             <div
+                className="chat-scroll"
                 style={{
                     flex: 1,
                     overflowY: 'auto',
-                    padding: '24px 16px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 20,
-                }}
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: `${persona.color}66 transparent`,
+                    '--scrollbar-thumb': `${persona.color}66`,
+                    '--scrollbar-thumb-hover': `${persona.color}bb`,
+                } as React.CSSProperties}
             >
-                {messages.length === 0 && (
-                    <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.15)', fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic', fontSize: 14, marginTop: 60 }}>
-                        Begin the conversation…
-                    </div>
-                )}
+                <div
+                    style={{ maxWidth: 800, margin: '0 auto', padding: '24px 16px', display: 'flex', flexDirection: 'column', gap: 20 }}
+                >
+                    {messages.length === 0 && (
+                        <div style={{ textAlign: 'center', color: 'rgba(255,255,255,0.15)', fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic', fontSize: 14, marginTop: 60 }}>
+                            Begin the conversation…
+                        </div>
+                    )}
 
-                {messages.map((msg) => {
-                    const isLastAssistant = msg.role === 'assistant' && msg.id === lastAssistantId;
-                    if (msg.role === 'assistant') {
-                        return (
-                            <AssistantBubble
-                                key={msg.id}
-                                message={msg}
-                                persona={persona}
-                                isStreaming={isStreaming && isLastAssistant}
-                                streamingThinking={isStreaming && isLastAssistant ? streamingThinking : undefined}
-                                thinkingBlockOpen={thinkingBlockOpen}
-                                onThinkingToggle={setThinkingBlockOpen}
-                            />
-                        );
-                    }
-                    if (msg.role === 'user') {
-                        return (
-                            <UserBubble
-                                key={msg.id}
-                                message={msg}
-                                accentColor={persona.color}
-                                isLast={msg.id === lastUserMessageId}
-                                onRegenerate={handleRegenerate}
-                                regenerateDisabled={isStreaming}
-                            />
-                        );
-                    }
-                    return null;
-                })}
+                    {messages.map((msg) => {
+                        const isLastAssistant = msg.role === 'assistant' && msg.id === lastAssistantId;
+                        if (msg.role === 'assistant') {
+                            return (
+                                <AssistantBubble
+                                    key={msg.id}
+                                    message={msg}
+                                    persona={persona}
+                                    isStreaming={isStreaming && isLastAssistant}
+                                    streamingThinking={isStreaming && isLastAssistant ? streamingThinking : undefined}
+                                    thinkingBlockOpen={thinkingBlockOpen}
+                                    onThinkingToggle={setThinkingBlockOpen}
+                                />
+                            );
+                        }
+                        if (msg.role === 'user') {
+                            return (
+                                <UserBubble
+                                    key={msg.id}
+                                    message={msg}
+                                    accentColor={persona.color}
+                                    isLast={msg.id === lastUserMessageId}
+                                    onRegenerate={handleRegenerate}
+                                    regenerateDisabled={isStreaming}
+                                />
+                            );
+                        }
+                        return null;
+                    })}
 
-                {/* Error message */}
-                {error && (
-                    <div style={{ fontSize: 12, color: '#ff6b6b', fontFamily: "'Courier New', monospace", padding: '8px 12px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', borderRadius: 8 }}>
-                        {error}
-                    </div>
-                )}
+                    {/* Error message */}
+                    {error && (
+                        <div style={{ fontSize: 12, color: '#ff6b6b', fontFamily: "'Courier New', monospace", padding: '8px 12px', background: 'rgba(255,0,0,0.05)', border: '1px solid rgba(255,0,0,0.15)', borderRadius: 8 }}>
+                            {error}
+                        </div>
+                    )}
 
-                <div ref={messagesEndRef} />
+                    <div ref={messagesEndRef} />
+                </div>
             </div>
 
             {/* Input area */}
@@ -289,94 +294,100 @@ export default function ChatPage() {
                     backdropFilter: 'blur(20px)',
                 }}
             >
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'flex-end',
-                        gap: 10,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: `1px solid ${persona.color}33`,
-                        borderRadius: 20,
-                        padding: '8px 8px 8px 16px',
-                    }}
-                >
-                    <textarea
-                        ref={textareaRef}
-                        value={input}
-                        onChange={handleInputChange}
-                        onKeyDown={handleKeyDown}
-                        disabled={isStreaming}
-                        placeholder="Write something…"
-                        rows={1}
+                <div style={{ maxWidth: 800, margin: '0 auto' }}>
+                    <div
                         style={{
-                            flex: 1,
-                            background: 'none',
-                            border: 'none',
-                            outline: 'none',
-                            color: '#e8e0d4',
-                            fontSize: 14,
-                            fontFamily: "'Lora', Georgia, serif",
-                            lineHeight: 1.6,
-                            resize: 'none',
-                            overflow: 'hidden',
-                            paddingTop: 6,
-                            paddingBottom: 6,
-                        }}
-                    />
-
-                    {/* Thinking toggle — only shown when model supports CoT */}
-                    {cotAvailable && (
-                        <button
-                            onClick={() => setThinkingEnabled(v => !v)}
-                            title={thinkingEnabled ? 'Thinking on — click to disable' : 'Thinking off — click to enable'}
-                            style={{
-                                width: 34,
-                                height: 34,
-                                borderRadius: '50%',
-                                border: 'none',
-                                background: thinkingEnabled
-                                    ? `${persona.color}33`
-                                    : 'transparent',
-                                color: thinkingEnabled
-                                    ? persona.color
-                                    : 'rgba(255,255,255,0.2)',
-                                cursor: 'pointer',
-                                fontSize: 16,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                transition: 'all 0.2s ease',
-                            }}
-                            aria-label="Toggle thinking"
-                            aria-pressed={thinkingEnabled}
-                        >
-                            ✦
-                        </button>
-                    )}
-
-                    <button
-                        onClick={handleSend}
-                        disabled={isStreaming || !input.trim()}
-                        style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: '50%',
-                            border: 'none',
-                            background: input.trim() && !isStreaming ? persona.color : 'rgba(255,255,255,0.08)',
-                            color: input.trim() && !isStreaming ? '#000000cc' : 'rgba(255,255,255,0.2)',
-                            cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed',
-                            fontSize: 16,
                             display: 'flex',
                             alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s ease',
-                            flexShrink: 0,
+                            gap: 10,
+                            background: 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${persona.color}33`,
+                            borderRadius: 20,
+                            padding: '8px 8px 8px 16px',
                         }}
-                        aria-label="Send"
                     >
-                        {isStreaming ? <TypingIndicator color={persona.color} /> : '↑'}
-                    </button>
+                        <textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={handleInputChange}
+                            onKeyDown={handleKeyDown}
+                            disabled={isStreaming}
+                            placeholder="Write something…"
+                            rows={1}
+                            style={{
+                                flex: 1,
+                                background: 'none',
+                                border: 'none',
+                                outline: 'none',
+                                color: '#e8e0d4',
+                                fontSize: 14,
+                                fontFamily: "'Lora', Georgia, serif",
+                                lineHeight: 1.6,
+                                resize: 'none',
+                                overflow: 'hidden',
+                                paddingTop: 6,
+                                paddingBottom: 6,
+                            }}
+                        />
+
+                        {/* Thinking toggle — only shown when model supports CoT */}
+                        {cotAvailable && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                                <button
+                                    onClick={() => setThinkingEnabled(v => !v)}
+                                    title={thinkingEnabled ? 'Thinking on — click to disable' : 'Thinking off — click to enable'}
+                                    style={{
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: 12,
+                                        border: 'none',
+                                        background: thinkingEnabled
+                                            ? `${persona.color}33`
+                                            : 'transparent',
+                                        color: thinkingEnabled
+                                            ? persona.color
+                                            : 'rgba(255,255,255,0.2)',
+                                        cursor: 'pointer',
+                                        fontSize: 16,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease',
+                                    }}
+                                    aria-label="Toggle thinking"
+                                    aria-pressed={thinkingEnabled}
+                                >
+                                    ✦
+                                </button>
+                                <span style={{ fontSize: 7, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', textTransform: 'uppercase', color: thinkingEnabled ? persona.color : 'rgba(255,255,255,0.2)', transition: 'color 0.2s' }}>think</span>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                            <button
+                                onClick={handleSend}
+                                disabled={isStreaming || !input.trim()}
+                                style={{
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 12,
+                                    border: 'none',
+                                    background: input.trim() && !isStreaming ? persona.color : 'rgba(255,255,255,0.08)',
+                                    color: input.trim() && !isStreaming ? '#000000cc' : 'rgba(255,255,255,0.2)',
+                                    cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed',
+                                    fontSize: 16,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                aria-label="Send"
+                            >
+                                {isStreaming ? <TypingIndicator color={persona.color} /> : '↑'}
+                            </button>
+                            <span style={{ fontSize: 7, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.2)' }}>send</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

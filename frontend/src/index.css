@@ -274,3 +274,19 @@ body,
 .user-bubble-wrapper:hover .regen-btn {
     opacity: 1 !important;
 }
+
+/* ─── Chat Scrollbar ─────────────────────────────────────────────────── */
+
+.chat-scroll::-webkit-scrollbar {
+    width: 4px;
+}
+.chat-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+.chat-scroll::-webkit-scrollbar-thumb {
+    border-radius: 2px;
+    background: var(--scrollbar-thumb, rgba(255,255,255,0.15));
+}
+.chat-scroll::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover, rgba(255,255,255,0.3));
+}
