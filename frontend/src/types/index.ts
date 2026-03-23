@@ -22,12 +22,26 @@ export interface Persona {
     order?: number;
 }
 
+export interface ToolCallRecord {
+    id: string;
+    toolName: string;
+    query: string;
+    status: 'pending' | 'complete' | 'error';
+    results?: Array<{
+        title: string;
+        url: string;
+        snippet: string;
+    }>;
+    errorMessage?: string;
+}
+
 export interface Message {
     id: string;
     role: 'user' | 'assistant' | 'system';
     content: string;
     thinking?: string;              // CoT content — only on assistant messages
     timestamp: number;
+    toolCalls?: ToolCallRecord[];
 }
 
 export interface Chat {
@@ -43,4 +57,24 @@ export interface AppSettings {
     globalSystemPrompt: string;
     defaultModelId: string | null;
     theme: 'dark';
+}
+
+export interface BraveSearchSettings {
+    safesearch: 'off' | 'moderate' | 'strict';
+    lat?: number;
+    long?: number;
+    timezone?: string;
+    city?: string;
+    state?: string;
+    stateName?: string;
+    country?: string;
+    postalCode?: string;
+}
+
+export interface ToolConfig {
+    id: string;
+    displayName: string;
+    enabled: boolean;
+    apiKey: string;
+    settings: Record<string, unknown>;
 }
