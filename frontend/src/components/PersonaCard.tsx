@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import type { Persona } from '@/types';
 
 const MENU_ITEMS = [
@@ -212,16 +214,18 @@ function ContextMenu({
 interface PersonaCardProps {
     persona: Persona;
     index: number;
+    id: string;
     onEdit?: (persona: Persona) => void;
     onArchive?: (persona: Persona) => void;
 }
 
-export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardProps) {
+export function PersonaCard({ persona, index, id, onEdit, onArchive }: PersonaCardProps) {
     const navigate = useNavigate();
     const [hovered, setHovered] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const cardRef = useRef<HTMLDivElement | null>(null);
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
     useEffect(() => {
         function handleClickOutside(e: MouseEvent) {
@@ -246,7 +250,7 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
 
     return (
         <div
-            ref={cardRef}
+            ref={(node) => { setNodeRef(node); (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node; }}
             onClick={handleCardClick}
             onMouseEnter={() => setHovered(true)}
             onMouseLeave={() => setHovered(false)}
@@ -258,8 +262,12 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
                 background: persona.gradient,
                 border: `1px solid ${hovered || menuOpen ? persona.color + '60' : persona.color + '22'}`,
                 cursor: 'pointer',
-                transition: 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                transform: hovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
+                transform: isDragging
+                    ? CSS.Transform.toString(transform)
+                    : hovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
+                transition: isDragging ? transition ?? undefined : 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                opacity: isDragging ? 0.85 : 1,
+                zIndex: isDragging ? 10 : undefined,
                 boxShadow: hovered || menuOpen
                     ? `0 30px 60px rgba(0,0,0,0.6), 0 0 40px ${persona.glow}, inset 0 1px 0 ${persona.color}30`
                     : `0 10px 30px rgba(0,0,0,0.4), inset 0 1px 0 ${persona.color}15`,
@@ -271,6 +279,32 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
         >
             <BreathingOrb glow={persona.glow} active={hovered} />
             <FloatingParticles color={persona.color} active={hovered} />
+
+            {/* Drag handle */}
+            <div
+                {...attributes}
+                {...listeners}
+                style={{
+                    position: 'absolute',
+                    top: 10,
+                    left: 10,
+                    width: 20,
+                    height: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    opacity: hovered ? 0.4 : 0,
+                    transition: 'opacity 0.2s',
+                    cursor: 'grab',
+                    color: persona.color,
+                    fontSize: 14,
+                    userSelect: 'none',
+                    touchAction: 'none',
+                }}
+                onClick={e => e.stopPropagation()}
+            >
+                ⠿
+            </div>
 
             {/* Online indicator */}
             {persona.online && (

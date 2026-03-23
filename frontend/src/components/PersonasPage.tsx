@@ -121,7 +121,7 @@ export default function PersonasPage() {
                 }}
             >
                 {personas.map((persona, i) => (
-                    <PersonaCard key={persona.id} persona={persona} index={i} onEdit={openEdit} onArchive={handleArchive} />
+                    <PersonaCard key={persona.id} id={persona.id} persona={persona} index={i} onEdit={openEdit} onArchive={handleArchive} />
                 ))}
                 {Array.from({ length: emptySlots }, (_, i) => (
                     <AddPersonaCard key={`empty-${i}`} index={personas.length + i} onClick={openCreate} />
