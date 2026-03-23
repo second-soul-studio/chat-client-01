@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router';
 import type { Persona } from '@/types';
 
 const MENU_ITEMS = [
-    { icon: '✦', label: 'Customise', sub: 'appearance & voice' },
     { icon: '◎', label: 'Nostalgia', sub: 'memory & history' },
     { icon: '⟡', label: 'Persona', sub: 'edit character' },
     { icon: '⊹', label: 'Archive', sub: 'saved moments' },
@@ -65,12 +64,14 @@ function ContextMenu({
     onClose,
     onEdit,
     onArchive,
+    onNostalgia,
 }: {
     persona: Persona;
     menuRef: React.RefObject<HTMLDivElement | null>;
     onClose: () => void;
     onEdit: () => void;
     onArchive: () => void;
+    onNostalgia: () => void;
 }) {
     const [visible, setVisible] = useState(false);
     const [hovered, setHovered] = useState<number | null>(null);
@@ -116,8 +117,8 @@ function ContextMenu({
             </div>
 
             {MENU_ITEMS.map((item, i) => {
-                // Archive item (index 3) — two-step confirm
-                if (i === 3) {
+                // Archive item (index 2) — two-step confirm
+                if (i === 2) {
                     return confirmArchive ? (
                         <div key={i} style={{ padding: '8px 16px' }}>
                             <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', marginBottom: 8, letterSpacing: '0.05em' }}>
@@ -178,8 +179,8 @@ function ContextMenu({
                         onMouseEnter={() => setHovered(i)}
                         onMouseLeave={() => setHovered(null)}
                         onClick={() => {
-                            // Customise (0) and Persona (2) open the edit form
-                            if (i === 0 || i === 2) { onEdit(); }
+                            if (i === 0) { onNostalgia(); }
+                            if (i === 1) { onEdit(); }
                             onClose();
                         }}
                         style={{
@@ -388,6 +389,7 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
                     onClose={() => setMenuOpen(false)}
                     onEdit={() => { onEdit?.(persona); setMenuOpen(false); }}
                     onArchive={() => onArchive?.(persona)}
+                    onNostalgia={() => { navigate(`/history?persona=${persona.id}`); setMenuOpen(false); }}
                 />
             )}
         </div>
