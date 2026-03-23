@@ -180,7 +180,7 @@ export function AssistantBubble({
     };
 
     return (
-        <div className="assistant-bubble" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '85%' }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '85%' }}>
             {/* Avatar */}
             <div
                 style={{
@@ -221,6 +221,7 @@ export function AssistantBubble({
 
                 {/* Bubble */}
                 <div
+                    className="assistant-bubble"
                     style={{
                         background: 'rgba(255,255,255,0.04)',
                         border: '1px solid rgba(255,255,255,0.08)',
