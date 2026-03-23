@@ -1,0 +1,96 @@
+<h2>Code-Block Design</h2>
+<p class="subtitle">Abgesetzt, mit Copy-Button — welcher Stil passt am besten zur App?</p>
+
+<div style="display:flex;gap:28px;flex-wrap:wrap;justify-content:center;margin-top:24px">
+
+  <!-- Option A: Dark terminal, accent header -->
+  <div class="card" data-choice="code-terminal" onclick="toggleSelect(this)" style="width:340px">
+    <div class="card-image" style="padding:0;overflow:hidden;border-radius:8px 8px 0 0">
+      <div style="background:#0d0a14;border:1px solid rgba(201,169,110,0.2);border-radius:8px;overflow:hidden;font-family:monospace">
+        <!-- header bar -->
+        <div style="background:rgba(201,169,110,0.08);border-bottom:1px solid rgba(201,169,110,0.15);padding:6px 12px;display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:9px;color:rgba(201,169,110,0.6);letter-spacing:0.15em;text-transform:uppercase">typescript</span>
+          <div style="background:rgba(201,169,110,0.12);border:1px solid rgba(201,169,110,0.3);border-radius:6px;padding:3px 8px;font-size:9px;color:rgba(201,169,110,0.7);cursor:pointer;letter-spacing:0.08em">copy</div>
+        </div>
+        <!-- code -->
+        <div style="padding:14px 16px;font-size:11px;line-height:1.7;overflow-x:auto">
+          <div><span style="color:#7aa2f7">function</span> <span style="color:#7dcfff">greet</span><span style="color:#c0caf5">(</span><span style="color:#e0af68">name</span><span style="color:#c0caf5">:</span> <span style="color:#9ece6a">string</span><span style="color:#c0caf5">)</span> <span style="color:#c0caf5">{</span></div>
+          <div style="padding-left:16px"><span style="color:#7aa2f7">return</span> <span style="color:#9ece6a">`Hello, <span style="color:#73daca">${</span><span style="color:#e0af68">name</span><span style="color:#73daca">}</span>!`</span><span style="color:#c0caf5">;</span></div>
+          <div><span style="color:#c0caf5">}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Terminal — Akzent-Header</h3>
+      <p>Dunkler Hintergrund, Persona-Farbe im Header. Wirkt wie ein echtes Terminal. Sehr zur App passend.</p>
+    </div>
+  </div>
+
+  <!-- Option B: Minimal inset, subtle -->
+  <div class="card" data-choice="code-minimal" onclick="toggleSelect(this)" style="width:340px">
+    <div class="card-image" style="padding:12px;background:#07050c">
+      <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;overflow:hidden;font-family:monospace;position:relative">
+        <!-- copy button top-right, appears on hover -->
+        <div style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:3px 8px;font-size:9px;color:rgba(255,255,255,0.4);cursor:pointer;letter-spacing:0.08em">copy</div>
+        <!-- lang tag -->
+        <div style="padding:8px 12px 0;font-size:9px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase">typescript</div>
+        <!-- code -->
+        <div style="padding:8px 16px 14px;font-size:11px;line-height:1.7">
+          <div><span style="color:#7aa2f7">function</span> <span style="color:#7dcfff">greet</span><span style="color:rgba(255,255,255,0.5)">(</span><span style="color:#e0af68">name</span><span style="color:rgba(255,255,255,0.5)">:</span> <span style="color:#9ece6a">string</span><span style="color:rgba(255,255,255,0.5)">)</span> <span style="color:rgba(255,255,255,0.5)">{</span></div>
+          <div style="padding-left:16px"><span style="color:#7aa2f7">return</span> <span style="color:#9ece6a">`Hello, ${name}!`</span><span style="color:rgba(255,255,255,0.5)">;</span></div>
+          <div><span style="color:rgba(255,255,255,0.5)">}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Minimal — Copy on Hover</h3>
+      <p>Sehr dezent, eingebettet in den Chat-Fluss. Copy-Button erscheint beim Hover. Weniger ablenkend.</p>
+    </div>
+  </div>
+
+  <!-- Option C: Pill header with dot indicators -->
+  <div class="card" data-choice="code-macos" onclick="toggleSelect(this)" style="width:340px">
+    <div class="card-image" style="padding:12px;background:#07050c">
+      <div style="background:#0d0a14;border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;font-family:monospace;box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+        <!-- macOS-style header -->
+        <div style="background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.06);padding:8px 12px;display:flex;align-items:center;gap:8px">
+          <div style="display:flex;gap:5px">
+            <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.1)"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.1)"></div>
+            <div style="width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.1)"></div>
+          </div>
+          <span style="flex:1;text-align:center;font-size:9px;color:rgba(255,255,255,0.2);letter-spacing:0.1em;text-transform:uppercase">typescript</span>
+          <div style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;font-size:9px;color:rgba(255,255,255,0.35);cursor:pointer">copy</div>
+        </div>
+        <!-- code -->
+        <div style="padding:14px 16px;font-size:11px;line-height:1.7">
+          <div><span style="color:#7aa2f7">function</span> <span style="color:#7dcfff">greet</span><span style="color:rgba(255,255,255,0.5)">(</span><span style="color:#e0af68">name</span><span style="color:rgba(255,255,255,0.5)">:</span> <span style="color:#9ece6a">string</span><span style="color:rgba(255,255,255,0.5)">)</span> <span style="color:rgba(255,255,255,0.5)">{</span></div>
+          <div style="padding-left:16px"><span style="color:#7aa2f7">return</span> <span style="color:#9ece6a">`Hello, ${name}!`</span><span style="color:rgba(255,255,255,0.5)">;</span></div>
+          <div><span style="color:rgba(255,255,255,0.5)">}</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>macOS-Fenster-Stil</h3>
+      <p>Drei Punkte links, Sprachname mittig, Copy rechts. Erkennbar, aber eher generisch.</p>
+    </div>
+  </div>
+
+</div>
+
+<div class="section" style="margin-top:8px;max-width:480px;margin-left:auto;margin-right:auto">
+  <div class="options">
+    <div class="option" data-choice="code-terminal" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content"><h3>Terminal — Akzent-Header</h3><p>Persona-Farbe im Header, passt am besten zur App-Ästhetik</p></div>
+    </div>
+    <div class="option" data-choice="code-minimal" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content"><h3>Minimal — Copy on Hover</h3><p>Sehr dezent, eingebettet, wenig ablenkend</p></div>
+    </div>
+    <div class="option" data-choice="code-macos" onclick="toggleSelect(this)">
+      <div class="letter">C</div>
+      <div class="content"><h3>macOS-Fenster-Stil</h3><p>Klassisch, gut bekannt, aber etwas generisch</p></div>
+    </div>
+  </div>
+</div>
