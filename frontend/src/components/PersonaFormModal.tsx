@@ -152,7 +152,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
 
                 <div style={{ padding: '8px 24px 24px' }}>
                     {/* Header */}
-                    <div style={{ marginBottom: 28, textAlign: 'center' }}>
+                    <div style={{ marginBottom: 8, textAlign: 'center' }}>
                         <h2
                             style={{
                                 fontFamily: "'Instrument Serif', Georgia, serif",
@@ -164,10 +164,9 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                         >
                             {persona ? 'Edit Persona' : 'New Persona'}
                         </h2>
-                        <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace", marginTop: 6, marginBottom: 0 }}>
-                            {persona ? 'customise your companion' : 'bring someone new to life'}
-                        </p>
                     </div>
+
+                    <SectionHeader label="Identity" />
 
                     {/* Name */}
                     <Field label="Name">
@@ -193,6 +192,67 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                             style={inputStyle()}
                         />
                     </Field>
+
+                    <SectionHeader label="Character" />
+
+                    {/* System prompt */}
+                    <Field label="Personality Prompt">
+                        <textarea
+                            value={form.systemPrompt}
+                            onChange={e => setForm(f => ({ ...f, systemPrompt: e.target.value }))}
+                            placeholder="Describe how this persona thinks, feels, and speaks…"
+                            rows={5}
+                            style={{
+                                ...inputStyle(),
+                                resize: 'none',
+                                lineHeight: 1.6,
+                            }}
+                        />
+                    </Field>
+
+                    {/* Show thinking toggle */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 0',
+                            marginBottom: 16,
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Show Thinking</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Display chain-of-thought blocks</div>
+                        </div>
+                        <Toggle
+                            checked={form.showThinking}
+                            color={palette.color}
+                            onChange={v => setForm(f => ({ ...f, showThinking: v }))}
+                        />
+                    </div>
+
+                    {/* Thinking Enabled */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 0',
+                            marginBottom: 8,
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Enable Thinking by Default</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Use CoT / thinking mode when starting new chats</div>
+                        </div>
+                        <Toggle
+                            checked={form.thinkingEnabled}
+                            color={palette.color}
+                            onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
+                        />
+                    </div>
+
+                    <SectionHeader label="Appearance" />
 
                     {/* Colour palette */}
                     <Field label="Soul Colour">
@@ -222,20 +282,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                         </div>
                     </Field>
 
-                    {/* System prompt */}
-                    <Field label="Personality Prompt">
-                        <textarea
-                            value={form.systemPrompt}
-                            onChange={e => setForm(f => ({ ...f, systemPrompt: e.target.value }))}
-                            placeholder="Describe how this persona thinks, feels, and speaks…"
-                            rows={5}
-                            style={{
-                                ...inputStyle(),
-                                resize: 'none',
-                                lineHeight: 1.6,
-                            }}
-                        />
-                    </Field>
+                    <SectionHeader label="Model" />
 
                     {/* Model picker */}
                     <ModelPicker
@@ -243,48 +290,6 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                         onChange={id => setForm(f => ({ ...f, modelId: id }))}
                         accentColor={palette.color}
                     />
-
-                    {/* Show thinking toggle */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 0',
-                            marginBottom: 24,
-                        }}
-                    >
-                        <div>
-                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Show Thinking</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Display chain-of-thought blocks</div>
-                        </div>
-                        <Toggle
-                            checked={form.showThinking}
-                            color={palette.color}
-                            onChange={v => setForm(f => ({ ...f, showThinking: v }))}
-                        />
-                    </div>
-
-                    {/* Thinking Enabled */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 0',
-                            marginBottom: 24,
-                        }}
-                    >
-                        <div>
-                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Enable Thinking by Default</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Use CoT / thinking mode when starting new chats</div>
-                        </div>
-                        <Toggle
-                            checked={form.thinkingEnabled}
-                            color={palette.color}
-                            onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
-                        />
-                    </div>
                     <div style={{ display: 'flex', gap: 12 }}>
                         <button
                             onClick={onClose}
@@ -651,6 +656,17 @@ function inputStyle(): React.CSSProperties {
         transition: 'border-color 0.2s ease',
         // Focus glow applied via :focus — not possible inline, handled in global CSS
     };
+}
+
+function SectionHeader({ label }: { label: string }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, margin: '24px 0 16px' }}>
+            <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace", whiteSpace: 'nowrap' }}>
+                {label}
+            </span>
+            <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.06)' }} />
+        </div>
+    );
 }
 
 function Toggle({ checked, color, onChange }: { checked: boolean; color: string; onChange: (v: boolean) => void }) {
