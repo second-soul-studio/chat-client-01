@@ -100,7 +100,13 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         });
     }
 
-    // openai + ollama both use OpenAI-compatible format
+    // openai, ollama, ollama-cloud all use OpenAI-compatible format;
+    // ollama-cloud adds X-Target-URL so the CORS proxy knows where to forward.
+    const extraHeaders: Record<string, string> = {};
+    if (provider.adapter === 'ollama-cloud') {
+        extraHeaders['X-Target-URL'] = 'https://ollama.com';
+    }
+
     return sendOpenAIMessage({
         baseUrl: provider.baseUrl,
         apiKey: provider.apiKey,
@@ -111,6 +117,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         topP,
         maxOutputTokens,
         supportsCot: effectiveCot,
+        extraHeaders,
         onChunk,
     });
 }
@@ -127,6 +134,7 @@ interface OpenAIAdapterOptions {
     topP: number;
     maxOutputTokens: number;
     supportsCot: boolean;
+    extraHeaders?: Record<string, string>;
     onChunk?: (content: string) => void;
 }
 
@@ -145,7 +153,7 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
 
     const response = await fetch(`${opts.baseUrl}/chat/completions`, {
         method: 'POST',
-        headers: buildOpenAIHeaders(opts.apiKey),
+        headers: { ...buildOpenAIHeaders(opts.apiKey), ...(opts.extraHeaders ?? {}) },
         body: JSON.stringify(body),
     });
 
@@ -313,11 +321,11 @@ export async function testProvider(provider: Provider): Promise<boolean> {
             return res.ok || res.status === 400; // 400 = valid key, wrong model — still reachable
         }
 
-        if (provider.adapter === 'ollama') {
+        if (provider.adapter === 'ollama' || provider.adapter === 'ollama-cloud') {
             const baseUrl = provider.baseUrl.replace(/\/v1\/?$/, '');
             const headers: Record<string, string> = {};
             if (provider.apiKey) headers['Authorization'] = `Bearer ${provider.apiKey}`;
-            // Cloud Ollama uses OpenAI-compatible /v1/models; local Ollama also supports it
+            if (provider.adapter === 'ollama-cloud') headers['X-Target-URL'] = 'https://ollama.com';
             const res = await fetch(`${baseUrl}/v1/models`, {
                 headers,
                 signal: AbortSignal.timeout(5000),

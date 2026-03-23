@@ -14,6 +14,7 @@ const registry: Record<string, ModelMetaFetcher> = {
     'openai-list': new OpenAIListFetcher(),
     'openrouter': new OpenRouterFetcher(),
     'ollama': new OllamaFetcher(),
+    'ollama-cloud': new OllamaFetcher('https://ollama.com'),
 };
 
 export function getFetcher(key: string): ModelMetaFetcher | null {

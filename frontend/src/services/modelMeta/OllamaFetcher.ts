@@ -16,12 +16,18 @@ interface OllamaShowResponse {
 }
 
 export class OllamaFetcher implements ModelMetaFetcher {
+    // upstreamUrl: when set, adds X-Target-URL to every request (proxy mode for Ollama Cloud)
+    constructor(private readonly upstreamUrl?: string) {}
+
     async fetchModels(provider: Provider): Promise<FetchedModel[]> {
         // Ollama's native API lives at the root, not under /v1
         const baseUrl = provider.baseUrl.replace(/\/v1\/?$/, '');
         const headers: Record<string, string> = {};
         if (provider.apiKey) {
             headers['Authorization'] = `Bearer ${provider.apiKey}`;
+        }
+        if (this.upstreamUrl) {
+            headers['X-Target-URL'] = this.upstreamUrl;
         }
 
         // Use OpenAI-compatible /v1/models — works for both local and cloud Ollama

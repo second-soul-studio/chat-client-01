@@ -16,6 +16,7 @@ const ADAPTER_OPTIONS: { value: AdapterType; label: string }[] = [
     { value: 'openai', label: 'OpenAI-compatible' },
     { value: 'anthropic', label: 'Anthropic' },
     { value: 'ollama', label: 'Ollama (local)' },
+    { value: 'ollama-cloud', label: 'Ollama Cloud (via proxy)' },
 ];
 
 // ─── Provider Form ────────────────────────────────────────────────────────────
@@ -29,7 +30,11 @@ interface ProviderFormProps {
 function ProviderForm({ initial, onSave, onCancel }: ProviderFormProps) {
     const [form, setForm] = useState({
         ...initial,
-        metaFetcherKey: initial.metaFetcherKey ?? (initial.adapter === 'ollama' ? 'ollama' : undefined),
+        metaFetcherKey: initial.metaFetcherKey ?? (
+            initial.adapter === 'ollama' ? 'ollama' :
+            initial.adapter === 'ollama-cloud' ? 'ollama-cloud' :
+            undefined
+        ),
     });
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
@@ -38,7 +43,8 @@ function ProviderForm({ initial, onSave, onCancel }: ProviderFormProps) {
         setForm(f => {
             const next = { ...f, [key]: value };
             if (key === 'adapter') {
-                next.metaFetcherKey = value === 'ollama' ? 'ollama' : f.metaFetcherKey;
+                if (value === 'ollama') next.metaFetcherKey = 'ollama';
+                else if (value === 'ollama-cloud') next.metaFetcherKey = 'ollama-cloud';
             }
             return next;
         });

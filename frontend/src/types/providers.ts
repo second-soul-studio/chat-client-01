@@ -1,6 +1,6 @@
 // Provider and model configuration types
 
-export type AdapterType = 'openai' | 'anthropic' | 'ollama';
+export type AdapterType = 'openai' | 'anthropic' | 'ollama' | 'ollama-cloud';
 
 export interface Provider {
     id: string;
