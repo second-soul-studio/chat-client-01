@@ -1,10 +1,10 @@
 import { useState } from 'react';
+import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
 import { PersonaCard, AddPersonaCard } from './PersonaCard';
 import PersonaFormModal from './PersonaFormModal';
 import type { Persona } from '@/types';
-
-const MAX_PERSONAS = 4;
 
 // Background nebula blobs matching the mockup
 const NEBULA_BLOBS = [
@@ -15,7 +15,7 @@ const NEBULA_BLOBS = [
 ];
 
 export default function PersonasPage() {
-    const { personas, removePersona } = useAppStore();
+    const { personas, removePersona, reorderPersonas } = useAppStore();
     const [modalOpen, setModalOpen] = useState(false);
     const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
 
@@ -33,8 +33,20 @@ export default function PersonasPage() {
         await removePersona(persona.id);
     };
 
-    // Pad with empty slots up to MAX_PERSONAS
-    const emptySlots = Math.max(0, MAX_PERSONAS - personas.length);
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = personas.findIndex(p => p.id === active.id);
+        const newIndex = personas.findIndex(p => p.id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const reordered = [...personas];
+        const [moved] = reordered.splice(oldIndex, 1);
+        reordered.splice(newIndex, 0, moved);
+        await reorderPersonas(reordered.map(p => p.id));
+    };
+
+    // Show up to 4 empty slots cosmetically on first use
+    const emptySlots = Math.max(0, 4 - personas.length);
 
     return (
         <div
@@ -109,24 +121,31 @@ export default function PersonasPage() {
             </div>
 
             {/* Persona cards grid */}
-            <div
-                style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    gap: 24,
-                    justifyContent: 'center',
-                    alignItems: 'flex-start',
-                    position: 'relative',
-                    zIndex: 1,
-                }}
-            >
-                {personas.map((persona, i) => (
-                    <PersonaCard key={persona.id} id={persona.id} persona={persona} index={i} onEdit={openEdit} onArchive={handleArchive} />
-                ))}
-                {Array.from({ length: emptySlots }, (_, i) => (
-                    <AddPersonaCard key={`empty-${i}`} index={personas.length + i} onClick={openCreate} />
-                ))}
-            </div>
+            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={personas.map(p => p.id)} strategy={rectSortingStrategy}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 24,
+                            justifyContent: 'center',
+                            alignItems: 'flex-start',
+                            position: 'relative',
+                            zIndex: 1,
+                        }}
+                    >
+                        {personas.map((persona, i) => (
+                            <PersonaCard key={persona.id} id={persona.id} persona={persona} index={i} onEdit={openEdit} onArchive={handleArchive} />
+                        ))}
+                        {Array.from({ length: emptySlots }, (_, i) => (
+                            <AddPersonaCard key={`empty-${i}`} index={personas.length + i} onClick={openCreate} />
+                        ))}
+                        {personas.length >= 4 && (
+                            <AddPersonaCard index={personas.length} onClick={openCreate} />
+                        )}
+                    </div>
+                </SortableContext>
+            </DndContext>
 
             {modalOpen && (
                 <PersonaFormModal
