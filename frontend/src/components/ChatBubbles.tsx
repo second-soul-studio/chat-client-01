@@ -161,8 +161,26 @@ export function AssistantBubble({
     thinkingBlockOpen?: boolean;
     onThinkingToggle?: (open: boolean) => void;
 }) {
+    const [copied, setCopied] = useState(false);
+    const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    }, []);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(message.content);
+            setCopied(true);
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+            copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // clipboard unavailable
+        }
+    };
+
     return (
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '85%' }}>
+        <div className="assistant-bubble" style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '85%' }}>
             {/* Avatar */}
             <div
                 style={{
@@ -270,6 +288,29 @@ export function AssistantBubble({
                             background: `linear-gradient(to bottom, ${persona.color}88, transparent)`,
                         }}
                     />
+
+                    <button
+                        onClick={handleCopy}
+                        aria-label={copied ? 'Copied' : 'Copy message'}
+                        title={copied ? 'Copied!' : 'Copy'}
+                        style={{
+                            position: 'absolute',
+                            bottom: 8,
+                            right: 8,
+                            background: copied ? `${persona.color}22` : 'transparent',
+                            border: `1px solid ${copied ? persona.color : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: 6,
+                            padding: '3px 7px',
+                            fontSize: 11,
+                            color: copied ? persona.color : 'rgba(255,255,255,0.3)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            opacity: copied ? 1 : 0,
+                        }}
+                        className="copy-btn"
+                    >
+                        {copied ? '✓' : '⎘'}
+                    </button>
                 </div>
 
                 <div style={{ marginTop: 4, marginLeft: 6, fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: "'Courier New', monospace", letterSpacing: '0.05em' }}>
@@ -283,10 +324,29 @@ export function AssistantBubble({
 // ─── User Bubble ──────────────────────────────────────────────────────────────
 
 export function UserBubble({ message, accentColor }: { message: Message; accentColor: string }) {
+    const [copied, setCopied] = useState(false);
+    const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    }, []);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(message.content);
+            setCopied(true);
+            if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+            copyTimerRef.current = setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // clipboard unavailable
+        }
+    };
+
     return (
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <div style={{ maxWidth: '78%' }}>
                 <div
+                    className="user-bubble"
                     style={{
                         background: `linear-gradient(135deg, ${accentColor}22 0%, ${accentColor}12 100%)`,
                         border: `1px solid ${accentColor}33`,
@@ -296,11 +356,35 @@ export function UserBubble({ message, accentColor }: { message: Message; accentC
                         fontSize: 14.5,
                         fontFamily: "'Lora', Georgia, serif",
                         lineHeight: 1.65,
+                        position: 'relative',
                     }}
                 >
                     <div className="prose prose-invert prose-sm max-w-none">
                         <ReactMarkdown>{message.content}</ReactMarkdown>
                     </div>
+
+                    <button
+                        onClick={handleCopy}
+                        aria-label={copied ? 'Copied' : 'Copy message'}
+                        title={copied ? 'Copied!' : 'Copy'}
+                        style={{
+                            position: 'absolute',
+                            bottom: 8,
+                            right: 8,
+                            background: copied ? `${accentColor}22` : 'transparent',
+                            border: `1px solid ${copied ? accentColor : 'rgba(255,255,255,0.1)'}`,
+                            borderRadius: 6,
+                            padding: '3px 7px',
+                            fontSize: 11,
+                            color: copied ? accentColor : 'rgba(255,255,255,0.3)',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                            opacity: copied ? 1 : 0,
+                        }}
+                        className="copy-btn"
+                    >
+                        {copied ? '✓' : '⎘'}
+                    </button>
                 </div>
                 <div style={{ marginTop: 4, marginRight: 6, textAlign: 'right', fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: "'Courier New', monospace", letterSpacing: '0.05em' }}>
                     {new Date(message.timestamp).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}

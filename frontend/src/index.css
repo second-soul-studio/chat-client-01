@@ -261,3 +261,10 @@ body,
         transform: translateY(0);
     }
 }
+
+/* ─── Copy Button ────────────────────────────────────────────────────── */
+
+.assistant-bubble:hover .copy-btn,
+.user-bubble:hover .copy-btn {
+    opacity: 1 !important;
+}
