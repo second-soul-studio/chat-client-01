@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { v4 as uuidv4 } from 'uuid';
 import { useAppStore } from '@/stores/appStore';
-import { sendMessage } from '@/services/api';
+import { toolLoop } from '@/services/toolLoop';
 import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
 import type { Message } from '@/types';
 
@@ -18,6 +18,12 @@ export default function ChatPage() {
         streamingThinking, updateStreamingThinking,
         thinkingBlockOpen, setThinkingBlockOpen,
         removeLastAssistantMessage,
+        toolConfigs,
+        pendingToolCalls,
+        addPendingToolCall,
+        updatePendingToolCall,
+        clearPendingToolCalls,
+        updateLastToolCalls,
     } = useAppStore();
 
     const persona = personas.find(p => p.id === personaId);
@@ -27,6 +33,8 @@ export default function ChatPage() {
     const [error, setError] = useState<string | null>(null);
     // Thinking starts at persona's default; user can flip it per conversation
     const [thinkingEnabled, setThinkingEnabled] = useState(() => persona?.thinkingEnabled ?? false);
+    const [searchEnabled, setSearchEnabled] = useState(false);
+    const hasTools = toolConfigs.some(c => c.enabled);
 
     // Initialise chat
     useEffect(() => {
@@ -70,18 +78,33 @@ export default function ChatPage() {
         setIsStreaming(true);
 
         try {
-            const result = await sendMessage({
+            const activeToolConfigs = searchEnabled
+                ? toolConfigs.filter(c => c.enabled)
+                : [];
+
+            const result = await toolLoop({
                 messages: priorMessages,
                 settings,
                 persona,
                 provider,
                 model,
+                toolConfigs: activeToolConfigs,
                 thinkingEnabled,
                 onChunk: updateLastAssistantMessage,
                 onThinkingChunk: updateStreamingThinking,
+                onToolCall: (record) => {
+                    addPendingToolCall(record);
+                },
+                onToolResult: (record) => {
+                    updatePendingToolCall(record);
+                },
             });
 
+            if (result.toolCalls.length > 0) {
+                updateLastToolCalls(result.toolCalls);
+            }
             await finaliseMessage(result.content, result.thinking);
+            clearPendingToolCalls();
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
             setError(msg);
@@ -90,7 +113,7 @@ export default function ChatPage() {
         } finally {
             setIsStreaming(false);
         }
-    }, [persona, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled]);
+    }, [persona, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled, searchEnabled, toolConfigs, addPendingToolCall, updatePendingToolCall, clearPendingToolCalls, updateLastToolCalls]);
 
     const handleSend = useCallback(async () => {
         if (!input.trim() || isStreaming || !persona || !activeChat || !settings) return;
@@ -254,6 +277,7 @@ export default function ChatPage() {
                                     streamingThinking={isStreaming && isLastAssistant ? streamingThinking : undefined}
                                     thinkingBlockOpen={thinkingBlockOpen}
                                     onThinkingToggle={setThinkingBlockOpen}
+                                    pendingToolCalls={isStreaming && isLastAssistant ? pendingToolCalls : undefined}
                                 />
                             );
                         }
@@ -388,6 +412,33 @@ export default function ChatPage() {
                             <span style={{ fontSize: 7, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.2)' }}>send</span>
                         </div>
                     </div>
+                    {/* Tool pills — shown below input when tools are available */}
+                    {hasTools && (
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8, paddingLeft: 4 }}>
+                            <button
+                                onClick={() => setSearchEnabled(v => !v)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 6,
+                                    padding: '4px 12px',
+                                    borderRadius: 20,
+                                    border: `1px solid ${searchEnabled ? persona.color + '66' : 'rgba(255,255,255,0.1)'}`,
+                                    background: searchEnabled ? `${persona.color}22` : 'transparent',
+                                    color: searchEnabled ? persona.color : 'rgba(255,255,255,0.3)',
+                                    fontSize: 11,
+                                    fontFamily: "'Courier New', monospace",
+                                    letterSpacing: '0.08em',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                aria-pressed={searchEnabled}
+                            >
+                                <span style={{ fontSize: 12 }}>🔍</span>
+                                Web Search
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
