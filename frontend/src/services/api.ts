@@ -13,10 +13,17 @@ function buildContextWindow(messages: Message[], maxTokens: number, systemPrompt
     const result: Message[] = [];
 
     for (let i = messages.length - 1; i >= 0; i--) {
-        const tokens = estimateTokens(messages[i].content);
+        const msg = messages[i];
+        let tokens = estimateTokens(msg.content);
+        // Account for tool results that will be expanded in context
+        if (msg.toolCalls) {
+            for (const tc of msg.toolCalls) {
+                tokens += estimateTokens(JSON.stringify(tc.results ?? {}));
+            }
+        }
         if (budget - tokens < 0) break;
         budget -= tokens;
-        result.unshift(messages[i]);
+        result.unshift(msg);
     }
 
     return result;
@@ -32,7 +39,7 @@ export function extractThinkingFromText(raw: string): { thinking?: string; conte
 
 // ─── Header Builders ─────────────────────────────────────────────────────────
 
-function buildOpenAIHeaders(apiKey: string): Record<string, string> {
+export function buildOpenAIHeaders(apiKey: string): Record<string, string> {
     return {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
@@ -259,7 +266,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
 
 // ─── Stream Readers ───────────────────────────────────────────────────────────
 
-async function readStream(
+export async function readStream(
     body: ReadableStream,
     onChunk: ((content: string) => void) | undefined,
     onThinkingChunk?: (thinking: string) => void,
