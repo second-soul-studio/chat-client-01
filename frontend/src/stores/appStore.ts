@@ -52,6 +52,13 @@ interface AppState {
     setIsStreaming: (v: boolean) => void;
     startNewChat: (personaId: string) => void;
 
+    // ─── Thinking Stream ──────────────────────────────────────────────────────
+    streamingThinking: string;
+    thinkingBlockOpen: boolean;
+    updateStreamingThinking: (thinking: string) => void;
+    setThinkingBlockOpen: (open: boolean) => void;
+    removeLastAssistantMessage: () => void;
+
     // ─── Chat History ─────────────────────────────────────────────────────────
     loadChatsForPersona: (personaId: string) => Promise<Chat[]>;
     removeChat: (id: string) => Promise<void>;
@@ -202,6 +209,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     activePersonaId: null,
     activeChat: null,
     isStreaming: false,
+    streamingThinking: '',
+    thinkingBlockOpen: false,
 
     setActivePersona(id) {
         set({ activePersonaId: id });
@@ -263,6 +272,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             messages[messages.length - 1] = { ...last, content, thinking };
             return { activeChat: { ...s.activeChat, messages } };
         });
+        set({ streamingThinking: '' });
 
         const { activeChat } = get();
         if (!activeChat) return;
@@ -283,6 +293,25 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     setIsStreaming(v) {
         set({ isStreaming: v });
+    },
+
+    updateStreamingThinking(thinking) {
+        set({ streamingThinking: thinking });
+    },
+
+    setThinkingBlockOpen(open) {
+        set({ thinkingBlockOpen: open });
+    },
+
+    removeLastAssistantMessage() {
+        set(s => {
+            if (!s.activeChat) return s;
+            const messages = [...s.activeChat.messages];
+            if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+                messages.pop();
+            }
+            return { activeChat: { ...s.activeChat, messages } };
+        });
     },
 
     // ─── Chat History ────────────────────────────────────────────────────────
