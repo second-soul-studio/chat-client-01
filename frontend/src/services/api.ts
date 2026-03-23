@@ -167,7 +167,7 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
         temperature: opts.temperature,
         top_p: opts.topP,
         max_tokens: opts.maxOutputTokens,
-        stream: !!opts.onChunk,
+        stream: !!(opts.onChunk || opts.onThinkingChunk),
         ...(opts.extraBodyParams ?? {}),
     };
 
@@ -182,7 +182,7 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
         throw new Error(`API error ${response.status}: ${error}`);
     }
 
-    if (opts.onChunk && response.body) {
+    if ((opts.onChunk || opts.onThinkingChunk) && response.body) {
         const { content, thinking } = await readStream(response.body, opts.onChunk, opts.onThinkingChunk);
         // reasoning_content (Ollama) takes priority; fall back to <think> tag extraction
         if (thinking) return { content, thinking };
@@ -194,7 +194,10 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
     const raw = data.choices?.[0]?.message?.content ?? '';
     // Non-streaming: check reasoning/reasoning_content field first, then <think> tags
     const reasoning = data.choices?.[0]?.message?.reasoning ?? data.choices?.[0]?.message?.reasoning_content ?? '';
-    if (reasoning) return { content: raw, thinking: reasoning };
+    if (reasoning) {
+        opts.onThinkingChunk?.(reasoning);
+        return { content: raw, thinking: reasoning };
+    }
     if (opts.supportsCot) return extractThinkingFromText(raw);
     return { content: raw };
 }
@@ -224,7 +227,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
         temperature: opts.temperature,
         top_p: opts.topP,
         max_tokens: opts.maxOutputTokens,
-        stream: !!opts.onChunk,
+        stream: !!(opts.onChunk || opts.onThinkingChunk),
     };
 
     const response = await fetch(`${opts.baseUrl}/messages`, {
@@ -238,7 +241,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
         throw new Error(`Anthropic API error ${response.status}: ${error}`);
     }
 
-    if (opts.onChunk && response.body) {
+    if ((opts.onChunk || opts.onThinkingChunk) && response.body) {
         // Anthropic streaming uses server-sent events with different event types
         const content = await readAnthropicStream(response.body, opts.onChunk, opts.onThinkingChunk);
         return content;
@@ -247,6 +250,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
     const data = await response.json();
     const thinkingBlock = data.content?.find((b: { type: string }) => b.type === 'thinking');
     const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
+    if (thinkingBlock?.thinking) opts.onThinkingChunk?.(thinkingBlock.thinking);
     return {
         thinking: thinkingBlock?.thinking,
         content: textBlock?.text ?? '',
@@ -257,7 +261,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
 
 async function readStream(
     body: ReadableStream,
-    onChunk: (content: string) => void,
+    onChunk: ((content: string) => void) | undefined,
     onThinkingChunk?: (thinking: string) => void,
 ): Promise<{ content: string; thinking?: string }> {
     const reader = body.getReader();
@@ -283,7 +287,7 @@ async function readStream(
                 const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? '';
                 if (content) {
                     fullContent += content;
-                    onChunk(fullContent);
+                    onChunk?.(fullContent);
                 }
                 if (reasoning) {
                     fullThinking += reasoning;
@@ -300,7 +304,7 @@ async function readStream(
 
 async function readAnthropicStream(
     body: ReadableStream,
-    onChunk: (content: string) => void,
+    onChunk: ((content: string) => void) | undefined,
     onThinkingChunk?: (thinking: string) => void,
 ): Promise<{ content: string; thinking?: string }> {
     const reader = body.getReader();
@@ -324,7 +328,7 @@ async function readAnthropicStream(
                     const delta = parsed.delta;
                     if (delta.type === 'text_delta') {
                         textContent += delta.text;
-                        onChunk(textContent);
+                        onChunk?.(textContent);
                     } else if (delta.type === 'thinking_delta') {
                         thinkingContent += delta.thinking;
                         onThinkingChunk?.(thinkingContent);
