@@ -57,10 +57,11 @@ export interface SendMessageOptions {
     model: ModelConfig;
     thinkingEnabled: boolean;
     onChunk?: (content: string) => void;
+    onThinkingChunk?: (thinking: string) => void;
 }
 
 export async function sendMessage(options: SendMessageOptions): Promise<{ content: string; thinking?: string }> {
-    const { messages, settings, persona, provider, model, thinkingEnabled, onChunk } = options;
+    const { messages, settings, persona, provider, model, thinkingEnabled, onChunk, onThinkingChunk } = options;
 
     // Build system prompt: global → persona → per-model user addition
     const systemPrompt = [
@@ -97,6 +98,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
             topP,
             maxOutputTokens,
             onChunk,
+            onThinkingChunk,
         });
     }
 
@@ -133,6 +135,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         extraHeaders,
         extraBodyParams,
         onChunk,
+        onThinkingChunk,
     });
 }
 
@@ -151,6 +154,7 @@ interface OpenAIAdapterOptions {
     extraHeaders?: Record<string, string>;
     extraBodyParams?: Record<string, unknown>;
     onChunk?: (content: string) => void;
+    onThinkingChunk?: (thinking: string) => void;
 }
 
 async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content: string; thinking?: string }> {
@@ -179,7 +183,7 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
     }
 
     if (opts.onChunk && response.body) {
-        const { content, thinking } = await readStream(response.body, opts.onChunk);
+        const { content, thinking } = await readStream(response.body, opts.onChunk, opts.onThinkingChunk);
         // reasoning_content (Ollama) takes priority; fall back to <think> tag extraction
         if (thinking) return { content, thinking };
         if (opts.supportsCot) return extractThinkingFromText(content);
@@ -207,6 +211,7 @@ interface AnthropicAdapterOptions {
     topP: number;
     maxOutputTokens: number;
     onChunk?: (content: string) => void;
+    onThinkingChunk?: (thinking: string) => void;
 }
 
 async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ content: string; thinking?: string }> {
@@ -235,7 +240,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
 
     if (opts.onChunk && response.body) {
         // Anthropic streaming uses server-sent events with different event types
-        const content = await readAnthropicStream(response.body, opts.onChunk);
+        const content = await readAnthropicStream(response.body, opts.onChunk, opts.onThinkingChunk);
         return content;
     }
 
@@ -253,6 +258,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
 async function readStream(
     body: ReadableStream,
     onChunk: (content: string) => void,
+    onThinkingChunk?: (thinking: string) => void,
 ): Promise<{ content: string; thinking?: string }> {
     const reader = body.getReader();
     const decoder = new TextDecoder();
@@ -281,6 +287,7 @@ async function readStream(
                 }
                 if (reasoning) {
                     fullThinking += reasoning;
+                    onThinkingChunk?.(fullThinking);
                 }
             } catch {
                 // Skip malformed chunks
@@ -294,6 +301,7 @@ async function readStream(
 async function readAnthropicStream(
     body: ReadableStream,
     onChunk: (content: string) => void,
+    onThinkingChunk?: (thinking: string) => void,
 ): Promise<{ content: string; thinking?: string }> {
     const reader = body.getReader();
     const decoder = new TextDecoder();
@@ -319,6 +327,7 @@ async function readAnthropicStream(
                         onChunk(textContent);
                     } else if (delta.type === 'thinking_delta') {
                         thinkingContent += delta.thinking;
+                        onThinkingChunk?.(thinkingContent);
                     }
                 }
             } catch {
