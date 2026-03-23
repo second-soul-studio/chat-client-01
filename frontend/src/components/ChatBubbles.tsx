@@ -28,8 +28,16 @@ export function TypingIndicator({ color }: { color: string }) {
 
 // ─── Thinking Block ───────────────────────────────────────────────────────────
 
-export function ThinkingBlock({ thinking, color }: { thinking: string; color: string }) {
-    const [open, setOpen] = useState(false);
+export function ThinkingBlock({
+    thinking, color, isStreaming, initialOpen, onToggle,
+}: {
+    thinking: string;
+    color: string;
+    isStreaming?: boolean;
+    initialOpen?: boolean;
+    onToggle?: (open: boolean) => void;
+}) {
+    const [open, setOpen] = useState(initialOpen ?? false);
     const contentRef = useRef<HTMLDivElement>(null);
     const [height, setHeight] = useState(0);
 
@@ -37,13 +45,17 @@ export function ThinkingBlock({ thinking, color }: { thinking: string; color: st
         if (contentRef.current) {
             setHeight(open ? contentRef.current.scrollHeight : 0);
         }
-    }, [open]);
+    }, [open, thinking]);
 
     return (
         <div style={{ marginBottom: 8 }}>
             {/* Toggle button */}
             <div
-                onClick={() => setOpen(o => !o)}
+                onClick={() => {
+                    const next = !open;
+                    setOpen(next);
+                    onToggle?.(next);
+                }}
                 style={{
                     display: 'inline-flex',
                     alignItems: 'center',
@@ -88,9 +100,21 @@ export function ThinkingBlock({ thinking, color }: { thinking: string; color: st
                     </svg>
                 </div>
 
-                <span style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace", color: open ? color : 'rgba(255,255,255,0.3)', transition: 'color 0.2s' }}>
-                    Gedanken
-                </span>
+                {isStreaming && !open ? (
+                    <div style={{ display: 'flex', gap: 3, alignItems: 'center' }}>
+                        {[0, 1, 2].map(i => (
+                            <div key={i} style={{
+                                width: 4, height: 4, borderRadius: '50%', background: color,
+                                animation: 'typingBounce 1.2s ease-in-out infinite',
+                                animationDelay: `${i * 0.2}s`, opacity: 0.7,
+                            }} />
+                        ))}
+                    </div>
+                ) : (
+                    <span style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace", color: open ? color : 'rgba(255,255,255,0.3)', transition: 'color 0.2s' }}>
+                        Gedanken
+                    </span>
+                )}
 
                 <span style={{ fontSize: 8, color: open ? color : 'rgba(255,255,255,0.2)', transition: 'transform 0.25s ease, color 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block', marginLeft: 2 }}>
                     ▼
