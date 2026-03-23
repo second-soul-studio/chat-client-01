@@ -3,6 +3,8 @@ import ReactMarkdown from 'react-markdown';
 import type { Persona } from '@/types';
 import type { Message } from '@/types';
 import { CodeBlock } from './CodeBlock';
+import { ToolCallBlock } from './ToolCallBlock';
+import type { ToolCallRecord } from '@/types';
 
 // ─── Typing Indicator ─────────────────────────────────────────────────────────
 
@@ -152,7 +154,7 @@ export function ThinkingBlock({
 // ─── Assistant Bubble ─────────────────────────────────────────────────────────
 
 export function AssistantBubble({
-    message, persona, isStreaming, streamingThinking, thinkingBlockOpen, onThinkingToggle,
+    message, persona, isStreaming, streamingThinking, thinkingBlockOpen, onThinkingToggle, pendingToolCalls,
 }: {
     message: Message;
     persona: Persona;
@@ -160,6 +162,7 @@ export function AssistantBubble({
     streamingThinking?: string;
     thinkingBlockOpen?: boolean;
     onThinkingToggle?: (open: boolean) => void;
+    pendingToolCalls?: ToolCallRecord[];
 }) {
     const [copied, setCopied] = useState(false);
     const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -208,6 +211,20 @@ export function AssistantBubble({
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
+                {/* Tool call blocks — persisted records first, then any in-flight pending ones */}
+                {(() => {
+                    const persisted = message.toolCalls ?? [];
+                    // During streaming, pending calls are shown via props; after streaming, they're in message.toolCalls
+                    const toShow = isStreaming ? (pendingToolCalls ?? []) : persisted;
+                    return toShow.length > 0 ? (
+                        <div style={{ marginBottom: 8 }}>
+                            {toShow.map(record => (
+                                <ToolCallBlock key={record.id} record={record} color={persona.color} />
+                            ))}
+                        </div>
+                    ) : null;
+                })()}
+
                 {/* Thinking block */}
                 {persona.showThinking && (!!message.thinking || (isStreaming && !!streamingThinking)) && (
                     <ThinkingBlock
