@@ -272,5 +272,5 @@ body,
 /* ─── Regenerate Button ──────────────────────────────────────────────── */
 
 .user-bubble-wrapper:hover .regen-btn {
-    opacity: 1;
+    opacity: 1 !important;
 }
