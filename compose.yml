@@ -11,7 +11,7 @@ services:
     ports:
       - "8081:8080"
     environment:
-      - ALLOWED_UPSTREAM_URLS=https://ollama.com
+      - ALLOWED_UPSTREAM_URLS=https://ollama.com,https://api.search.brave.com
       - ALLOWED_ORIGINS=http://localhost:5173,https://your-domain.com
       # PORT=8080 is the default — override here if needed
     restart: unless-stopped

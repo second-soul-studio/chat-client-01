@@ -40,7 +40,7 @@ func isAllowed(value string, list []string) bool {
 func setCORSHeaders(w http.ResponseWriter, origin string) {
 	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Target-URL")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Target-URL, X-Subscription-Token")
 	w.Header().Set("Access-Control-Max-Age", "86400")
 }
 
