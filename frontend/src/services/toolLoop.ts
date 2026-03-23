@@ -1,6 +1,6 @@
 import type { Message, AppSettings, Persona, ToolCallRecord, ToolConfig } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
-import { sendMessage, buildOpenAIHeaders, readStream, extractThinkingFromText } from './api';
+import { sendMessage, buildOpenAIHeaders, readStream, extractThinkingFromText, buildContextWindow } from './api';
 import { getToolByName, getAllTools } from './tools/registry';
 import type { ToolDefinition } from './tools/types';
 
@@ -150,7 +150,13 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
     }));
 
     const collectedToolCalls: ToolCallRecord[] = [];
-    const context = buildRawContext(opts.messages, systemPrompt);
+    const maxContextTokens = 8000;
+    const trimmedMessages = buildContextWindow(
+        opts.messages.filter(m => m.role !== 'system'),
+        maxContextTokens,
+        systemPrompt,
+    );
+    let context = buildRawContext(trimmedMessages, systemPrompt);
 
     for (let iter = 0; iter < 5; iter++) {
         const response = await fetch(`${baseUrl}/chat/completions`, {

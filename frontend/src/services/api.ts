@@ -7,7 +7,7 @@ function estimateTokens(text: string): number {
     return Math.ceil(text.length / 4);
 }
 
-function buildContextWindow(messages: Message[], maxTokens: number, systemPrompt: string): Message[] {
+export function buildContextWindow(messages: Message[], maxTokens: number, systemPrompt: string): Message[] {
     const systemTokens = estimateTokens(systemPrompt);
     let budget = maxTokens - systemTokens - 500; // reserve for response
     const result: Message[] = [];
