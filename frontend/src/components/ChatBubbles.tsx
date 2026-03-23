@@ -324,7 +324,15 @@ export function AssistantBubble({
 
 // ─── User Bubble ──────────────────────────────────────────────────────────────
 
-export function UserBubble({ message, accentColor }: { message: Message; accentColor: string }) {
+export function UserBubble({
+    message, accentColor, isLast, onRegenerate, regenerateDisabled,
+}: {
+    message: Message;
+    accentColor: string;
+    isLast?: boolean;
+    onRegenerate?: () => void;
+    regenerateDisabled?: boolean;
+}) {
     const [copied, setCopied] = useState(false);
     const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -344,7 +352,30 @@ export function UserBubble({ message, accentColor }: { message: Message; accentC
     };
 
     return (
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        <div className="user-bubble-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, width: '100%' }}>
+            {isLast && onRegenerate && (
+                <button
+                    onClick={onRegenerate}
+                    disabled={regenerateDisabled}
+                    title="Regenerate response"
+                    style={{
+                        background: 'transparent',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: 8,
+                        padding: '6px 8px',
+                        color: regenerateDisabled ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.3)',
+                        fontSize: 16,
+                        cursor: regenerateDisabled ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        flexShrink: 0,
+                        opacity: 0,
+                    }}
+                    aria-label="Regenerate response"
+                    className="regen-btn"
+                >
+                    ↺
+                </button>
+            )}
             <div style={{ maxWidth: '78%' }}>
                 <div
                     className="user-bubble"

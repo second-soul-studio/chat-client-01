@@ -268,3 +268,9 @@ body,
 .user-bubble:hover .copy-btn {
     opacity: 1 !important;
 }
+
+/* ─── Regenerate Button ──────────────────────────────────────────────── */
+
+.user-bubble-wrapper:hover .regen-btn {
+    opacity: 1;
+}
