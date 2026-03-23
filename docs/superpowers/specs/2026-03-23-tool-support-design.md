@@ -28,6 +28,10 @@ Add native OpenAI function-calling (tool use) support to Second Soul, starting w
 
 ## Data Model
 
+### IndexedDB version
+
+`db.ts` must bump the schema version from 2 → 3 and add the `tool_configs` object store in the `upgrade()` callback.
+
 ### New IndexedDB store: `tool_configs`
 
 ```ts
@@ -65,7 +69,7 @@ New optional field on the existing `Message` interface:
 interface ToolCallRecord {
     id: string;           // tool_call_id from OpenAI response
     toolName: string;     // e.g. 'brave_web_search'
-    query: string;
+    query: string;        // Brave-specific convenience field; represents the primary display label for any tool
     status: 'pending' | 'complete' | 'error';
     results?: Array<{
         title: string;
@@ -113,17 +117,25 @@ interface ToolDefinition {
 `toolLoop` replaces the direct `sendMessage` call in `ChatPage`. It accepts the same inputs as `sendMessage` plus an active tools list and additional callbacks.
 
 ```
-toolLoop(messages, settings, persona, provider, model, activeTools, callbacks):
+toolLoop(messages, settings, persona, provider, model, activeTools, thinkingEnabled, callbacks):
   1. Non-streaming API call with tools array defined
   2. If finish_reason === 'tool_calls':
-       a. Fire onToolCall(toolName, query)  →  UI shows "Searching for X…"
-       b. Execute tool via registry
-       c. Fire onToolResult(toolCallRecord) →  UI shows block as complete
-       d. Append assistant tool_calls message + tool result messages to context
-       e. Repeat from step 1 (max 5 iterations to prevent infinite loops)
-  3. Final API call without tools → streaming (onChunk / onThinkingChunk)
+       a. The response may contain multiple tool calls — execute all in parallel (Promise.all)
+       b. For each tool call: fire onToolCall(record) → UI shows "Searching for X…"
+       c. Execute tool via registry; on error, set status 'error' and errorMessage
+       d. Fire onToolResult(record) → UI updates block to complete or error state
+       e. Append to context:
+          - { role: 'assistant', content: null, tool_calls: [...all tool calls] }
+          - { role: 'tool', tool_call_id, content: JSON.stringify(results) } per tool
+            (on error: content = JSON.stringify({ error: errorMessage }))
+       f. Repeat from step 1 (max 5 iterations to prevent infinite loops)
+  3. Final API call without tools → streaming (onChunk / onThinkingChunk / thinkingEnabled)
+     Note: omitting tools on the final call is intentional — the max-iterations guard already
+     handles runaway loops; the final turn should produce a user-facing response, not more calls.
   4. Return { content, thinking, toolCalls: ToolCallRecord[] }
 ```
+
+Context reconstruction from stored `ToolCallRecord[]` is entirely the responsibility of `toolLoop.ts`. When replaying a prior conversation turn that has `toolCalls`, expand each record as described in step 2e above. The `buildContextWindow` token estimator in `api.ts` must also account for tool result content when calculating budget — each `ToolCallRecord` contributes approximately `estimateTokens(JSON.stringify(results))` tokens.
 
 `api.ts` is not modified. `toolLoop.ts` exports the auth header builders it needs from `api.ts` (small export additions only).
 
@@ -135,7 +147,15 @@ toolLoop(messages, settings, persona, provider, model, activeTools, callbacks):
 - Optional location headers forwarded from `BraveSearchSettings`
 - Returns top 3 results from `response.web.results` (title, url, description)
 
-The Go proxy's `ALLOWED_UPSTREAM_URLS` environment variable must include `https://api.search.brave.com`.
+**Go proxy changes required:**
+
+1. `ALLOWED_UPSTREAM_URLS` must include `https://api.search.brave.com` (env var / `compose.yml` / `.env.example`)
+2. `backend/main.go` — `setCORSHeaders()` must add `X-Subscription-Token` to `Access-Control-Allow-Headers`, otherwise the browser will block the preflight request:
+
+```go
+w.Header().Set("Access-Control-Allow-Headers",
+    "Authorization, Content-Type, X-Target-URL, X-Subscription-Token")
+```
 
 ---
 
@@ -188,11 +208,13 @@ New tab alongside "Providers" and "Global".
 |---|---|
 | `src/types/index.ts` | Add `ToolCallRecord`, extend `Message` with `toolCalls?` |
 | `src/services/db.ts` | Add `tool_configs` object store, CRUD helpers |
-| `src/stores/appStore.ts` | Add `toolConfigs` state, `addToolConfig`, `updateToolConfig` actions |
+| `src/stores/appStore.ts` | Add `toolConfigs` state, `addToolConfig`, `updateToolConfig`, `removeToolConfig` actions; extend `init()` to load tool configs; add `pendingToolCalls: ToolCallRecord[]` for in-progress UI state |
 | `src/services/api.ts` | Export `buildOpenAIHeaders`, `buildAnthropicHeaders` (currently private) |
-| `src/components/ChatPage.tsx` | Use `toolLoop` instead of `sendMessage`; add web search pill; pass tool callbacks |
+| `src/components/ChatPage.tsx` | Use `toolLoop` instead of `sendMessage`; add web search pill (local `searchEnabled` boolean, default `false`; shown only when at least one tool is globally enabled); pass `onToolCall`/`onToolResult` callbacks that update `pendingToolCalls` in the store |
 | `src/components/ChatBubbles.tsx` | Render `ToolCallBlock` for messages with `toolCalls` |
-| `src/components/SettingsPage.tsx` | Add "Tools" tab |
+| `src/components/SettingsPage.tsx` | Add "Tools" tab; extend tab type from `'api' \| 'global'` to `'api' \| 'global' \| 'tools'` |
+| `backend/main.go` | Add `X-Subscription-Token` to `Access-Control-Allow-Headers` |
+| `backend/.env.example` / `compose.yml` | Add `https://api.search.brave.com` to `ALLOWED_UPSTREAM_URLS` example |
 
 ---
 
