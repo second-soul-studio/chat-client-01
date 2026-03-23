@@ -104,13 +104,13 @@ export default function ChatPage() {
                 updateLastToolCalls(result.toolCalls);
             }
             await finaliseMessage(result.content, result.thinking);
-            clearPendingToolCalls();
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
             setError(msg);
             // Remove placeholder on error
             updateLastAssistantMessage('_(error — see above)_');
         } finally {
+            clearPendingToolCalls();
             setIsStreaming(false);
         }
     }, [persona, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled, searchEnabled, toolConfigs, addPendingToolCall, updatePendingToolCall, clearPendingToolCalls, updateLastToolCalls]);
