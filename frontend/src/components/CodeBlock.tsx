@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -10,11 +10,21 @@ interface CodeBlockProps {
 
 export function CodeBlock({ language, code, accentColor }: CodeBlockProps) {
     const [copied, setCopied] = useState(false);
+    const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (timerRef.current) clearTimeout(timerRef.current);
+    }, []);
 
     const handleCopy = async () => {
-        await navigator.clipboard.writeText(code);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1500);
+        try {
+            await navigator.clipboard.writeText(code);
+            setCopied(true);
+            if (timerRef.current) clearTimeout(timerRef.current);
+            timerRef.current = setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // clipboard unavailable
+        }
     };
 
     return (
@@ -24,7 +34,6 @@ export function CodeBlock({ language, code, accentColor }: CodeBlockProps) {
             border: `1px solid ${accentColor}22`,
             marginBottom: 4,
         }}>
-            {/* Header */}
             <div style={{
                 background: `${accentColor}0e`,
                 borderBottom: `1px solid ${accentColor}22`,
@@ -45,6 +54,7 @@ export function CodeBlock({ language, code, accentColor }: CodeBlockProps) {
                 </span>
                 <button
                     onClick={handleCopy}
+                    aria-label={copied ? 'Copied' : `Copy ${language || 'code'} snippet`}
                     style={{
                         background: copied ? `${accentColor}22` : 'transparent',
                         border: `1px solid ${copied ? accentColor : `${accentColor}33`}`,
@@ -61,7 +71,6 @@ export function CodeBlock({ language, code, accentColor }: CodeBlockProps) {
                     {copied ? 'copied ✓' : 'copy'}
                 </button>
             </div>
-            {/* Code */}
             <SyntaxHighlighter
                 language={language || 'text'}
                 style={oneDark}
