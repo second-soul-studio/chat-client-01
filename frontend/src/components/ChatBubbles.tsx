@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Persona } from '@/types';
 import type { Message } from '@/types';
+import { CodeBlock } from './CodeBlock';
 
 // ─── Typing Indicator ─────────────────────────────────────────────────────────
 
@@ -150,7 +151,16 @@ export function ThinkingBlock({
 
 // ─── Assistant Bubble ─────────────────────────────────────────────────────────
 
-export function AssistantBubble({ message, persona, isStreaming }: { message: Message; persona: Persona; isStreaming?: boolean }) {
+export function AssistantBubble({
+    message, persona, isStreaming, streamingThinking, thinkingBlockOpen, onThinkingToggle,
+}: {
+    message: Message;
+    persona: Persona;
+    isStreaming?: boolean;
+    streamingThinking?: string;
+    thinkingBlockOpen?: boolean;
+    onThinkingToggle?: (open: boolean) => void;
+}) {
     return (
         <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', maxWidth: '85%' }}>
             {/* Avatar */}
@@ -180,9 +190,15 @@ export function AssistantBubble({ message, persona, isStreaming }: { message: Me
             </div>
 
             <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Thinking block — only when present and not streaming */}
-                {message.thinking && !isStreaming && persona.showThinking && (
-                    <ThinkingBlock thinking={message.thinking} color={persona.color} />
+                {/* Thinking block */}
+                {persona.showThinking && (!!message.thinking || (isStreaming && !!streamingThinking)) && (
+                    <ThinkingBlock
+                        thinking={isStreaming ? (streamingThinking ?? '') : (message.thinking ?? '')}
+                        color={persona.color}
+                        isStreaming={isStreaming}
+                        initialOpen={thinkingBlockOpen}
+                        onToggle={onThinkingToggle}
+                    />
                 )}
 
                 {/* Bubble */}
@@ -205,7 +221,40 @@ export function AssistantBubble({ message, persona, isStreaming }: { message: Me
                         <TypingIndicator color={persona.color} />
                     ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
-                            <ReactMarkdown>{message.content}</ReactMarkdown>
+                            <ReactMarkdown
+                                components={{
+                                    code({ className, children, ...props }) {
+                                        const language = /^language-(\w+)/.exec(className ?? '')?.[1] ?? '';
+                                        const isBlock = !!language || (className ?? '').startsWith('language-');
+                                        if (isBlock) {
+                                            return (
+                                                <CodeBlock
+                                                    language={language}
+                                                    code={String(children).replace(/\n$/, '')}
+                                                    accentColor={persona.color}
+                                                />
+                                            );
+                                        }
+                                        return (
+                                            <code
+                                                style={{
+                                                    background: `${persona.color}18`,
+                                                    color: persona.color,
+                                                    borderRadius: 4,
+                                                    padding: '1px 5px',
+                                                    fontSize: '0.88em',
+                                                    fontFamily: "'Courier New', monospace",
+                                                }}
+                                                {...props}
+                                            >
+                                                {children}
+                                            </code>
+                                        );
+                                    },
+                                }}
+                            >
+                                {message.content}
+                            </ReactMarkdown>
                         </div>
                     )}
 
