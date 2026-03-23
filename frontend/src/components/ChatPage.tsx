@@ -15,6 +15,9 @@ export default function ChatPage() {
         activeChat, isStreaming,
         loadOrCreateChat, addMessage, updateLastAssistantMessage,
         finaliseMessage, setIsStreaming,
+        streamingThinking, updateStreamingThinking,
+        thinkingBlockOpen, setThinkingBlockOpen,
+        removeLastAssistantMessage,
     } = useAppStore();
 
     const persona = personas.find(p => p.id === personaId);
@@ -44,23 +47,8 @@ export default function ChatPage() {
         e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
     };
 
-    const handleSend = useCallback(async () => {
-        if (!input.trim() || isStreaming || !persona || !activeChat || !settings) return;
-
-        const userMessage: Message = {
-            id: uuidv4(),
-            role: 'user',
-            content: input.trim(),
-            timestamp: Date.now(),
-        };
-
-        setInput('');
-        setError(null);
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-        }
-
-        addMessage(userMessage);
+    const doSend = useCallback(async (_content: string, priorMessages: Message[]) => {
+        if (!persona || !settings) return;
 
         const modelId = persona.modelId ?? settings.defaultModelId;
         const model = modelId ? modelConfigs.find(m => m.id === modelId) : null;
@@ -83,15 +71,14 @@ export default function ChatPage() {
 
         try {
             const result = await sendMessage({
-                messages: [...activeChat.messages, userMessage],
+                messages: priorMessages,
                 settings,
                 persona,
                 provider,
                 model,
                 thinkingEnabled,
-                onChunk: (content) => {
-                    updateLastAssistantMessage(content);
-                },
+                onChunk: updateLastAssistantMessage,
+                onThinkingChunk: updateStreamingThinking,
             });
 
             await finaliseMessage(result.content, result.thinking);
@@ -103,7 +90,42 @@ export default function ChatPage() {
         } finally {
             setIsStreaming(false);
         }
-    }, [input, isStreaming, persona, activeChat, settings, modelConfigs, providers, addMessage, updateLastAssistantMessage, finaliseMessage, setIsStreaming]);
+    }, [persona, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled]);
+
+    const handleSend = useCallback(async () => {
+        if (!input.trim() || isStreaming || !persona || !activeChat || !settings) return;
+
+        const userMessage: Message = {
+            id: uuidv4(),
+            role: 'user',
+            content: input.trim(),
+            timestamp: Date.now(),
+        };
+
+        setInput('');
+        setError(null);
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto';
+        }
+
+        addMessage(userMessage);
+
+        const priorMessages = [...activeChat.messages, userMessage];
+        await doSend(userMessage.content, priorMessages);
+    }, [input, isStreaming, persona, activeChat, settings, addMessage, doSend]);
+
+    const handleRegenerate = useCallback(async () => {
+        if (isStreaming || !activeChat) return;
+        const msgs = activeChat.messages;
+        let lastUserIdx = -1;
+        for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === 'user') { lastUserIdx = i; break; }
+        }
+        if (lastUserIdx === -1) return;
+        setError(null);
+        removeLastAssistantMessage();
+        await doSend(msgs[lastUserIdx].content, msgs.slice(0, lastUserIdx + 1));
+    }, [isStreaming, activeChat, removeLastAssistantMessage, doSend]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
         if (e.key === 'Enter' && !e.shiftKey) {
@@ -126,6 +148,9 @@ export default function ChatPage() {
     }
 
     const messages = activeChat?.messages ?? [];
+
+    const lastUserMessageId = [...messages].reverse().find(m => m.role === 'user')?.id;
+    const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id;
 
     // Resolve active model to decide whether to show the thinking toggle
     const activeModelId = persona.modelId ?? settings?.defaultModelId;
@@ -213,20 +238,32 @@ export default function ChatPage() {
                     </div>
                 )}
 
-                {messages.map((msg, i) => {
-                    const isLastAssistant = msg.role === 'assistant' && i === messages.length - 1;
+                {messages.map((msg) => {
+                    const isLastAssistant = msg.role === 'assistant' && msg.id === lastAssistantId;
                     if (msg.role === 'assistant') {
                         return (
                             <AssistantBubble
                                 key={msg.id}
                                 message={msg}
                                 persona={persona}
-                                isStreaming={isStreaming && isLastAssistant && msg.content === ''}
+                                isStreaming={isStreaming && isLastAssistant}
+                                streamingThinking={isStreaming && isLastAssistant ? streamingThinking : undefined}
+                                thinkingBlockOpen={thinkingBlockOpen}
+                                onThinkingToggle={setThinkingBlockOpen}
                             />
                         );
                     }
                     if (msg.role === 'user') {
-                        return <UserBubble key={msg.id} message={msg} accentColor={persona.color} />;
+                        return (
+                            <UserBubble
+                                key={msg.id}
+                                message={msg}
+                                accentColor={persona.color}
+                                isLast={msg.id === lastUserMessageId}
+                                onRegenerate={handleRegenerate}
+                                regenerateDisabled={isStreaming}
+                            />
+                        );
                     }
                     return null;
                 })}
