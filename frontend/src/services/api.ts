@@ -103,12 +103,25 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     // openai, ollama, ollama-cloud all use OpenAI-compatible format;
     // ollama-cloud adds X-Target-URL so the CORS proxy knows where to forward.
     const extraHeaders: Record<string, string> = {};
+    const extraBodyParams: Record<string, unknown> = {};
+
     if (provider.adapter === 'ollama-cloud') {
         extraHeaders['X-Target-URL'] = 'https://ollama.com';
     }
 
+    // Ollama requires think:true in the request body to activate extended thinking.
+    if ((provider.adapter === 'ollama' || provider.adapter === 'ollama-cloud') && thinkingEnabled) {
+        extraBodyParams['think'] = true;
+    }
+
+    // Ollama's OpenAI-compat API lives under /v1 — normalise regardless of what the user entered.
+    let baseUrl = provider.baseUrl;
+    if (provider.adapter === 'ollama' || provider.adapter === 'ollama-cloud') {
+        baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1';
+    }
+
     return sendOpenAIMessage({
-        baseUrl: provider.baseUrl,
+        baseUrl,
         apiKey: provider.apiKey,
         modelSlug: effectiveSlug,
         systemPrompt,
@@ -118,6 +131,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         maxOutputTokens,
         supportsCot: effectiveCot,
         extraHeaders,
+        extraBodyParams,
         onChunk,
     });
 }
@@ -135,6 +149,7 @@ interface OpenAIAdapterOptions {
     maxOutputTokens: number;
     supportsCot: boolean;
     extraHeaders?: Record<string, string>;
+    extraBodyParams?: Record<string, unknown>;
     onChunk?: (content: string) => void;
 }
 
@@ -149,6 +164,7 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
         top_p: opts.topP,
         max_tokens: opts.maxOutputTokens,
         stream: !!opts.onChunk,
+        ...(opts.extraBodyParams ?? {}),
     };
 
     const response = await fetch(`${opts.baseUrl}/chat/completions`, {
@@ -163,13 +179,18 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
     }
 
     if (opts.onChunk && response.body) {
-        const raw = await readStream(response.body, opts.onChunk);
-        if (opts.supportsCot) return extractThinkingFromText(raw);
-        return { content: raw };
+        const { content, thinking } = await readStream(response.body, opts.onChunk);
+        // reasoning_content (Ollama) takes priority; fall back to <think> tag extraction
+        if (thinking) return { content, thinking };
+        if (opts.supportsCot) return extractThinkingFromText(content);
+        return { content };
     }
 
     const data = await response.json();
     const raw = data.choices?.[0]?.message?.content ?? '';
+    // Non-streaming: check reasoning/reasoning_content field first, then <think> tags
+    const reasoning = data.choices?.[0]?.message?.reasoning ?? data.choices?.[0]?.message?.reasoning_content ?? '';
+    if (reasoning) return { content: raw, thinking: reasoning };
     if (opts.supportsCot) return extractThinkingFromText(raw);
     return { content: raw };
 }
@@ -229,10 +250,14 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
 
 // ─── Stream Readers ───────────────────────────────────────────────────────────
 
-async function readStream(body: ReadableStream, onChunk: (content: string) => void): Promise<string> {
+async function readStream(
+    body: ReadableStream,
+    onChunk: (content: string) => void,
+): Promise<{ content: string; thinking?: string }> {
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let fullContent = '';
+    let fullThinking = '';
 
     while (true) {
         const { done, value } = await reader.read();
@@ -246,10 +271,16 @@ async function readStream(body: ReadableStream, onChunk: (content: string) => vo
             if (data === '[DONE]') continue;
             try {
                 const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta?.content ?? '';
-                if (delta) {
-                    fullContent += delta;
+                const delta = parsed.choices?.[0]?.delta;
+                const content = delta?.content ?? '';
+                // Ollama returns thinking as reasoning in the delta
+                const reasoning = delta?.reasoning ?? delta?.reasoning_content ?? '';
+                if (content) {
+                    fullContent += content;
                     onChunk(fullContent);
+                }
+                if (reasoning) {
+                    fullThinking += reasoning;
                 }
             } catch {
                 // Skip malformed chunks
@@ -257,7 +288,7 @@ async function readStream(body: ReadableStream, onChunk: (content: string) => vo
         }
     }
 
-    return fullContent;
+    return { content: fullContent, thinking: fullThinking || undefined };
 }
 
 async function readAnthropicStream(
