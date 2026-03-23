@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import ProviderManager from './ProviderManager';
+import ToolsSettings from './ToolsSettings';
 import type { AppSettings } from '@/types';
 
 export default function SettingsPage() {
     const { settings, setSettings } = useAppStore();
-    const [activeTab, setActiveTab] = useState<'api' | 'global'>('api');
+    const [activeTab, setActiveTab] = useState<'api' | 'global' | 'tools'>('api');
 
     if (!settings) return null;
 
@@ -17,6 +18,7 @@ export default function SettingsPage() {
     const TABS = [
         { id: 'api' as const, label: 'Providers' },
         { id: 'global' as const, label: 'Global' },
+        { id: 'tools' as const, label: 'Tools' },
     ];
 
     return (
@@ -86,6 +88,8 @@ export default function SettingsPage() {
                     </p>
                 </div>
             )}
+
+            {activeTab === 'tools' && <ToolsSettings />}
         </div>
     );
 }
