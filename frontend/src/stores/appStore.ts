@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import type { AppSettings, Chat, Message, Persona } from '@/types';
+import type { AppSettings, Chat, Message, Persona, ToolConfig, ToolCallRecord } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import {
     getSettings, saveSettings,
@@ -10,6 +10,7 @@ import {
     putGlobalModelMeta,
     getChatsForPersona, saveChat, deleteChat as dbDeleteChat,
     getChat,
+    getToolConfigs, saveToolConfig, deleteToolConfig as dbDeleteToolConfig,
 } from '@/services/db';
 import { getFetcher } from '@/services/modelMeta/registry';
 
@@ -63,20 +64,36 @@ interface AppState {
     // ─── Chat History ─────────────────────────────────────────────────────────
     loadChatsForPersona: (personaId: string) => Promise<Chat[]>;
     removeChat: (id: string) => Promise<void>;
+
+    // ─── Tool Configs ─────────────────────────────────────────────────────────
+    toolConfigs: ToolConfig[];
+    addToolConfig: (config: ToolConfig) => Promise<void>;
+    updateToolConfig: (config: ToolConfig) => Promise<void>;
+    removeToolConfig: (id: string) => Promise<void>;
+
+    // ─── Pending Tool Calls (in-progress UI state) ────────────────────────────
+    pendingToolCalls: ToolCallRecord[];
+    addPendingToolCall: (call: ToolCallRecord) => void;   // safe for parallel calls
+    updatePendingToolCall: (updated: ToolCallRecord) => void;
+    clearPendingToolCalls: () => void;
+
+    // ─── Last Tool Calls (store tool calls on assistant message) ──────────────
+    updateLastToolCalls: (toolCalls: ToolCallRecord[]) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
     initialised: false,
 
     async init() {
-        const [settings, personas, providers, modelConfigs] = await Promise.all([
+        const [settings, personas, providers, modelConfigs, toolConfigs] = await Promise.all([
             getSettings(),
             getPersonas(),
             getProviders(),
             getModelConfigs(),
+            getToolConfigs(),
         ]);
         const sorted = personas.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        set({ settings, personas: sorted, providers, modelConfigs, initialised: true });
+        set({ settings, personas: sorted, providers, modelConfigs, toolConfigs, initialised: true });
     },
 
     // ─── Settings ───────────────────────────────────────────────────────────
@@ -335,5 +352,56 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     async removeChat(id) {
         await dbDeleteChat(id);
+    },
+
+    // ─── Tool Configs ────────────────────────────────────────────────────────
+
+    toolConfigs: [],
+
+    async addToolConfig(config) {
+        await saveToolConfig(config);
+        set(s => ({ toolConfigs: [...s.toolConfigs, config] }));
+    },
+
+    async updateToolConfig(config) {
+        await saveToolConfig(config);
+        set(s => ({ toolConfigs: s.toolConfigs.map(c => c.id === config.id ? config : c) }));
+    },
+
+    async removeToolConfig(id) {
+        await dbDeleteToolConfig(id);
+        set(s => ({ toolConfigs: s.toolConfigs.filter(c => c.id !== id) }));
+    },
+
+    // ─── Pending Tool Calls ──────────────────────────────────────────────────
+
+    pendingToolCalls: [],
+
+    addPendingToolCall(call) {
+        // Uses functional update to be safe against parallel calls
+        set(s => ({ pendingToolCalls: [...s.pendingToolCalls, call] }));
+    },
+
+    updatePendingToolCall(updated) {
+        set(s => ({
+            pendingToolCalls: s.pendingToolCalls.map(c => c.id === updated.id ? updated : c),
+        }));
+    },
+
+    clearPendingToolCalls() {
+        set({ pendingToolCalls: [] });
+    },
+
+    // ─── Last Tool Calls ─────────────────────────────────────────────────────
+
+    updateLastToolCalls(toolCalls) {
+        set(s => {
+            if (!s.activeChat) return s;
+            const messages = [...s.activeChat.messages];
+            const last = messages[messages.length - 1];
+            if (!last || last.role !== 'assistant') return s;
+            messages[messages.length - 1] = { ...last, toolCalls };
+            return { activeChat: { ...s.activeChat, messages } };
+        });
     },
 }));
