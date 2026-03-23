@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { Chat, Persona, AppSettings } from '@/types';
+import type { Chat, Persona, AppSettings, ToolConfig } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import type { FetchedModel } from '@/services/modelMeta/types';
 import defaultProviders from '@/data/providers.default.json';
@@ -34,6 +34,10 @@ interface SecondSoulDB extends DBSchema {
         key: string;             // = FetchedModel.slug
         value: FetchedModel & { source: string; updatedAt: number };
     };
+    toolConfigs: {
+        key: string;
+        value: ToolConfig;
+    };
 }
 
 let dbInstance: IDBPDatabase<SecondSoulDB> | null = null;
@@ -41,7 +45,7 @@ let dbInstance: IDBPDatabase<SecondSoulDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<SecondSoulDB>> {
     if (dbInstance) return dbInstance;
 
-    dbInstance = await openDB<SecondSoulDB>('second-soul', 2, {
+    dbInstance = await openDB<SecondSoulDB>('second-soul', 3, {
         upgrade(db, oldVersion) {
             if (oldVersion < 1) {
                 const chatStore = db.createObjectStore('chats', { keyPath: 'id' });
@@ -57,6 +61,9 @@ export async function getDB(): Promise<IDBPDatabase<SecondSoulDB>> {
             }
             if (oldVersion < 2) {
                 db.createObjectStore('globalModelMeta');
+            }
+            if (oldVersion < 3) {
+                db.createObjectStore('toolConfigs', { keyPath: 'id' });
             }
         },
     });
@@ -202,4 +209,21 @@ export async function getGlobalModelMeta(slug: string) {
 export async function getAllGlobalModelMeta() {
     const db = await getDB();
     return db.getAll('globalModelMeta');
+}
+
+// ─── Tool Configs ─────────────────────────────────────────────────────────────
+
+export async function getToolConfigs(): Promise<ToolConfig[]> {
+    const db = await getDB();
+    return db.getAll('toolConfigs');
+}
+
+export async function saveToolConfig(config: ToolConfig): Promise<void> {
+    const db = await getDB();
+    await db.put('toolConfigs', config);
+}
+
+export async function deleteToolConfig(id: string): Promise<void> {
+    const db = await getDB();
+    await db.delete('toolConfigs', id);
 }
