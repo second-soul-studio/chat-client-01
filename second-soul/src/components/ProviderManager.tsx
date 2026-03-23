@@ -27,12 +27,21 @@ interface ProviderFormProps {
 }
 
 function ProviderForm({ initial, onSave, onCancel }: ProviderFormProps) {
-    const [form, setForm] = useState(initial);
+    const [form, setForm] = useState({
+        ...initial,
+        metaFetcherKey: initial.metaFetcherKey ?? (initial.adapter === 'ollama' ? 'ollama' : undefined),
+    });
     const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
 
     const field = (key: keyof typeof form, value: string | boolean) =>
-        setForm(f => ({ ...f, [key]: value }));
+        setForm(f => {
+            const next = { ...f, [key]: value };
+            if (key === 'adapter') {
+                next.metaFetcherKey = value === 'ollama' ? 'ollama' : f.metaFetcherKey;
+            }
+            return next;
+        });
 
     const handleTest = async () => {
         if (!form.baseUrl || !form.apiKey) return;

@@ -313,6 +313,18 @@ export async function testProvider(provider: Provider): Promise<boolean> {
             return res.ok || res.status === 400; // 400 = valid key, wrong model — still reachable
         }
 
+        if (provider.adapter === 'ollama') {
+            const baseUrl = provider.baseUrl.replace(/\/v1\/?$/, '');
+            const headers: Record<string, string> = {};
+            if (provider.apiKey) headers['Authorization'] = `Bearer ${provider.apiKey}`;
+            // Cloud Ollama uses OpenAI-compatible /v1/models; local Ollama also supports it
+            const res = await fetch(`${baseUrl}/v1/models`, {
+                headers,
+                signal: AbortSignal.timeout(5000),
+            });
+            return res.ok;
+        }
+
         const res = await fetch(`${provider.baseUrl}/models`, {
             headers: buildOpenAIHeaders(provider.apiKey),
             signal: AbortSignal.timeout(5000),
