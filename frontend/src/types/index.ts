@@ -19,6 +19,7 @@ export interface Persona {
         topK?: number;
         maxOutputTokens?: number;
     };
+    order?: number;
 }
 
 export interface Message {

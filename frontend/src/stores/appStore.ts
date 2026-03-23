@@ -27,6 +27,7 @@ interface AppState {
     addPersona: (persona: Omit<Persona, 'id'>) => Promise<Persona>;
     updatePersona: (persona: Persona) => Promise<void>;
     removePersona: (id: string) => Promise<void>;
+    reorderPersonas: (ids: string[]) => Promise<void>;
 
     // ─── Providers ────────────────────────────────────────────────────────────
     providers: Provider[];
@@ -74,7 +75,8 @@ export const useAppStore = create<AppState>((set, get) => ({
             getProviders(),
             getModelConfigs(),
         ]);
-        set({ settings, personas, providers, modelConfigs, initialised: true });
+        const sorted = personas.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        set({ settings, personas: sorted, providers, modelConfigs, initialised: true });
     },
 
     // ─── Settings ───────────────────────────────────────────────────────────
@@ -105,6 +107,17 @@ export const useAppStore = create<AppState>((set, get) => ({
     async removePersona(id) {
         await dbDeletePersona(id);
         set(s => ({ personas: s.personas.filter(p => p.id !== id) }));
+    },
+
+    async reorderPersonas(ids) {
+        const { personas } = get();
+        const updated = ids.map((id, index) => {
+            const p = personas.find(x => x.id === id);
+            if (!p) return null;
+            return { ...p, order: index };
+        }).filter(Boolean) as Persona[];
+        await Promise.all(updated.map(p => savePersona(p)));
+        set({ personas: updated });
     },
 
     // ─── Providers ──────────────────────────────────────────────────────────
