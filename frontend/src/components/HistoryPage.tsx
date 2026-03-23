@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAppStore } from '@/stores/appStore';
 import type { Chat } from '@/types';
 
 export default function HistoryPage() {
     const { personas, loadChatsForPersona, removeChat } = useAppStore();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const filterPersonaId = searchParams.get('persona');
+    const filteredPersonas = filterPersonaId
+        ? personas.filter(p => p.id === filterPersonaId)
+        : personas;
 
     // Map personaId -> chats
     const [chatsByPersona, setChatsByPersona] = useState<Record<string, Chat[]>>({});
@@ -51,7 +56,29 @@ export default function HistoryPage() {
                 </p>
             )}
 
-            {personas.map(persona => {
+            {filterPersonaId && (() => {
+                const fp = personas.find(p => p.id === filterPersonaId);
+                if (!fp) return null;
+                return (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 16, padding: '4px 10px 4px 8px', borderRadius: 20, background: `${fp.color}18`, border: `1px solid ${fp.color}33` }}>
+                        <div style={{ width: 18, height: 18, borderRadius: '50%', background: fp.gradient, border: `1px solid ${fp.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: fp.color }}>
+                            {fp.name[0]}
+                        </div>
+                        <span style={{ fontSize: 11, color: fp.color, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em' }}>
+                            {fp.name}
+                        </span>
+                        <button
+                            onClick={() => setSearchParams({})}
+                            style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: 14, padding: 0, lineHeight: 1 }}
+                            aria-label="Clear filter"
+                        >
+                            ×
+                        </button>
+                    </div>
+                );
+            })()}
+
+            {filteredPersonas.map(persona => {
                 const chats = chatsByPersona[persona.id] ?? [];
                 if (chats.length === 0) return null;
 
