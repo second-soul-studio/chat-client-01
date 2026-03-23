@@ -219,7 +219,6 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
     const navigate = useNavigate();
     const [hovered, setHovered] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [talkPressed, setTalkPressed] = useState(false);
     const menuRef = useRef<HTMLDivElement | null>(null);
     const cardRef = useRef<HTMLDivElement | null>(null);
 
@@ -240,17 +239,8 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
     }, [menuOpen]);
 
     const handleCardClick = (e: React.MouseEvent) => {
-        if ((e.target as Element).closest('[data-talk]')) return;
-        setMenuOpen(prev => !prev);
-    };
-
-    const handleTalk = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        setTalkPressed(true);
-        setTimeout(() => {
-            setTalkPressed(false);
-            navigate(`/chat/${persona.id}`);
-        }, 150);
+        if ((e.target as Element).closest('[data-menu]')) return;
+        navigate(`/chat/${persona.id}`);
     };
 
     return (
@@ -354,36 +344,40 @@ export function PersonaCard({ persona, index, onEdit, onArchive }: PersonaCardPr
                 </div>
             </div>
 
-            {/* Talk button */}
+            {/* Hamburger menu button */}
             <div
-                data-talk="true"
-                onClick={handleTalk}
+                data-menu="true"
+                onClick={e => { e.stopPropagation(); setMenuOpen(prev => !prev); }}
                 style={{
                     position: 'absolute',
                     bottom: 16,
                     left: '50%',
-                    transform: `translateX(-50%) scale(${talkPressed ? 0.95 : 1})`,
+                    transform: 'translateX(-50%)',
                     transition: 'transform 0.1s ease, background 0.2s ease',
-                    background: talkPressed ? persona.color : `${persona.color}22`,
+                    background: menuOpen ? persona.color : `${persona.color}22`,
                     border: `1px solid ${persona.color}66`,
                     borderRadius: 20,
                     padding: '8px 28px',
                     cursor: 'pointer',
-                    color: talkPressed ? '#000000cc' : persona.color,
-                    fontSize: 11,
-                    letterSpacing: '0.15em',
-                    textTransform: 'uppercase',
-                    fontFamily: "'Courier New', monospace",
-                    whiteSpace: 'nowrap',
-                    backdropFilter: 'blur(10px)',
                     minWidth: 44,
                     minHeight: 44,
                     display: 'flex',
+                    flexDirection: 'column',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    gap: 5,
+                    backdropFilter: 'blur(10px)',
                 }}
             >
-                talk
+                {[0, 1, 2].map(i => (
+                    <div key={i} style={{
+                        width: 18,
+                        height: 1.5,
+                        background: menuOpen ? '#000000cc' : persona.color,
+                        borderRadius: 2,
+                        transition: 'background 0.2s ease',
+                    }} />
+                ))}
             </div>
 
             {/* Context menu */}
