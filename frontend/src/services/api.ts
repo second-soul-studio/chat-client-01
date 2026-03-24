@@ -1,5 +1,6 @@
 import type { Message, AppSettings, Persona } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
+import { proxiedFetch } from './proxiedFetch';
 
 // ─── Token Estimation ─────────────────────────────────────────────────────────
 
@@ -114,10 +115,6 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     const extraHeaders: Record<string, string> = {};
     const extraBodyParams: Record<string, unknown> = {};
 
-    if (provider.adapter === 'ollama-cloud') {
-        extraHeaders['X-Target-URL'] = 'https://ollama.com';
-    }
-
     // Ollama requires think:true in the request body to activate extended thinking.
     if ((provider.adapter === 'ollama' || provider.adapter === 'ollama-cloud') && thinkingEnabled) {
         extraBodyParams['think'] = true;
@@ -178,7 +175,7 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
         ...(opts.extraBodyParams ?? {}),
     };
 
-    const response = await fetch(`${opts.baseUrl}/chat/completions`, {
+    const response = await proxiedFetch(`${opts.baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { ...buildOpenAIHeaders(opts.apiKey), ...(opts.extraHeaders ?? {}) },
         body: JSON.stringify(body),
@@ -237,7 +234,7 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
         stream: !!(opts.onChunk || opts.onThinkingChunk),
     };
 
-    const response = await fetch(`${opts.baseUrl}/messages`, {
+    const response = await proxiedFetch(`${opts.baseUrl}/messages`, {
         method: 'POST',
         headers: buildAnthropicHeaders(opts.apiKey),
         body: JSON.stringify(body),
@@ -358,8 +355,7 @@ async function readAnthropicStream(
 export async function testProvider(provider: Provider): Promise<boolean> {
     try {
         if (provider.adapter === 'anthropic') {
-            // Anthropic doesn't have a /models endpoint — use a minimal completion
-            const res = await fetch(`${provider.baseUrl}/messages`, {
+            const res = await proxiedFetch(`${provider.baseUrl}/messages`, {
                 method: 'POST',
                 headers: buildAnthropicHeaders(provider.apiKey),
                 body: JSON.stringify({
@@ -369,22 +365,21 @@ export async function testProvider(provider: Provider): Promise<boolean> {
                 }),
                 signal: AbortSignal.timeout(5000),
             });
-            return res.ok || res.status === 400; // 400 = valid key, wrong model — still reachable
+            return res.ok || res.status === 400;
         }
 
         if (provider.adapter === 'ollama' || provider.adapter === 'ollama-cloud') {
             const baseUrl = provider.baseUrl.replace(/\/v1\/?$/, '');
             const headers: Record<string, string> = {};
             if (provider.apiKey) headers['Authorization'] = `Bearer ${provider.apiKey}`;
-            if (provider.adapter === 'ollama-cloud') headers['X-Target-URL'] = 'https://ollama.com';
-            const res = await fetch(`${baseUrl}/v1/models`, {
+            const res = await proxiedFetch(`${baseUrl}/v1/models`, {
                 headers,
                 signal: AbortSignal.timeout(5000),
             });
             return res.ok;
         }
 
-        const res = await fetch(`${provider.baseUrl}/models`, {
+        const res = await proxiedFetch(`${provider.baseUrl}/models`, {
             headers: buildOpenAIHeaders(provider.apiKey),
             signal: AbortSignal.timeout(5000),
         });
