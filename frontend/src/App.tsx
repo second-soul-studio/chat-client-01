@@ -6,6 +6,7 @@ import PersonasPage from '@/components/PersonasPage';
 import ChatPage from '@/components/ChatPage';
 import HistoryPage from '@/components/HistoryPage';
 import SettingsPage from '@/components/SettingsPage';
+import MemoryPage from '@/components/MemoryPage';
 
 export default function App() {
     const { init, initialised } = useAppStore();
@@ -31,6 +32,7 @@ export default function App() {
                 <Route path="/chat/:personaId" element={<ChatPage />} />
                 <Route path="/chat/:personaId/:chatId" element={<ChatPage />} />
                 <Route path="/history" element={<HistoryPage />} />
+                <Route path="/memory/:personaId" element={<MemoryPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

@@ -423,7 +423,7 @@ export function PersonaCard({ persona, index, id, onEdit, onArchive }: PersonaCa
                     onClose={() => setMenuOpen(false)}
                     onEdit={() => { onEdit?.(persona); setMenuOpen(false); }}
                     onArchive={() => onArchive?.(persona)}
-                    onNostalgia={() => { navigate(`/history?persona=${persona.id}`); setMenuOpen(false); }}
+                    onNostalgia={() => { navigate(`/memory/${persona.id}`); setMenuOpen(false); }}
                 />
             )}
         </div>
