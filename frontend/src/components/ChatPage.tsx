@@ -4,7 +4,11 @@ import { v4 as uuidv4 } from 'uuid';
 import { useAppStore } from '@/stores/appStore';
 import { toolLoop } from '@/services/toolLoop';
 import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
-import type { Message } from '@/types';
+import MemorySuggestion from './MemorySuggestion';
+import FloatingHearts from './FloatingHearts';
+import { detectMemories, shouldRunDetection } from '@/services/memory';
+import { savePendingEntry, getMemoryMeta, saveMemoryMeta } from '@/services/db';
+import type { Message, MemoryPendingEntry } from '@/types';
 
 export default function ChatPage() {
     const { personaId, chatId } = useParams<{ personaId: string; chatId?: string }>();
@@ -24,6 +28,8 @@ export default function ChatPage() {
         updatePendingToolCall,
         clearPendingToolCalls,
         updateLastToolCalls,
+        incrementTurnCount,
+        resetTurnCount,
     } = useAppStore();
 
     const persona = personas.find(p => p.id === personaId);
@@ -35,6 +41,11 @@ export default function ChatPage() {
     const [thinkingEnabled, setThinkingEnabled] = useState(() => persona?.thinkingEnabled ?? false);
     const [searchEnabled, setSearchEnabled] = useState(false);
     const hasTools = toolConfigs.some(c => c.enabled);
+
+    // Memory detection state
+    const [suggestedEntries, setSuggestedEntries] = useState<MemoryPendingEntry[]>([]);
+    const [isDetecting, setIsDetecting] = useState(false);
+    const [showHearts, setShowHearts] = useState(false);
 
     // Initialise chat
     useEffect(() => {
@@ -54,6 +65,95 @@ export default function ChatPage() {
         e.target.style.height = 'auto';
         e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
     };
+
+    // ─── Memory Detection ─────────────────────────────────────────────────────
+
+    const triggerDetection = useCallback(async (msgs: Message[], silent = false) => {
+        if (!personaId || !activeChat || !settings || !persona || persona.memoryEnabled === false) return;
+
+        const workerModelId = settings.memorySettings.workerModelId;
+        const modelId = workerModelId ?? persona.modelId ?? settings.defaultModelId;
+        const model = modelId ? modelConfigs.find(m => m.id === modelId) : null;
+        const provider = model ? providers.find(p => p.id === model.providerId && p.enabled) : null;
+        if (!model || !provider) return;
+
+        if (!silent) setIsDetecting(true);
+        try {
+            const recentMessages = msgs.slice(-10);
+            const entries = await detectMemories(recentMessages, personaId, activeChat.id, provider, model);
+            resetTurnCount(personaId);
+
+            if (entries.length > 0) {
+                if (silent) {
+                    // Session-end: save directly as suggested (user sees on Memory Page)
+                    for (const entry of entries) {
+                        await savePendingEntry(entry);
+                    }
+                } else {
+                    setSuggestedEntries(prev => [...prev, ...entries]);
+                }
+            }
+        } catch (err) {
+            console.error('Memory detection failed:', err);
+        } finally {
+            if (!silent) setIsDetecting(false);
+        }
+    }, [personaId, activeChat, settings, persona, modelConfigs, providers, resetTurnCount]);
+
+    // Session-end detection: fire-and-forget on unmount
+    useEffect(() => {
+        const pid = personaId;
+        return () => {
+            if (!pid) return;
+            const turns = useAppStore.getState().turnsSinceLastDetection[pid] ?? 0;
+            const chat = useAppStore.getState().activeChat;
+            if (turns > 0 && chat && chat.messages.length > 0) {
+                triggerDetection(chat.messages, true);
+            }
+        };
+    }, [personaId, triggerDetection]);
+
+    // Memory accept/dismiss handlers
+    const handleAcceptEntry = useCallback(async (entry: MemoryPendingEntry) => {
+        if (!personaId) return;
+        const accepted = { ...entry, status: 'accepted' as const };
+        await savePendingEntry(accepted);
+
+        const meta = await getMemoryMeta(personaId) ?? {
+            personaId,
+            indexContent: '',
+            lastConsolidatedAt: null,
+            pendingCount: 0,
+            nsfwEnabled: true,
+        };
+        meta.pendingCount++;
+        await saveMemoryMeta(meta);
+
+        if (entry.type === 'emotional' || entry.type === 'nsfw') {
+            setShowHearts(true);
+        }
+        setSuggestedEntries(prev => prev.filter(e => e.id !== entry.id));
+    }, [personaId]);
+
+    const handleAcceptAll = useCallback(async () => {
+        for (const entry of suggestedEntries) {
+            await handleAcceptEntry(entry);
+        }
+    }, [suggestedEntries, handleAcceptEntry]);
+
+    const handleDismissEntry = useCallback((entryId: string) => {
+        setSuggestedEntries(prev => prev.filter(e => e.id !== entryId));
+    }, []);
+
+    const handleDismissAll = useCallback(() => {
+        setSuggestedEntries([]);
+    }, []);
+
+    const handleEditEntry = useCallback((entryId: string, newContent: string) => {
+        setSuggestedEntries(prev =>
+            prev.map(e => e.id === entryId ? { ...e, content: newContent } : e)
+        );
+    }, []);
 
     const doSend = useCallback(async (_content: string, priorMessages: Message[]) => {
         if (!persona || !settings) return;
@@ -104,6 +204,17 @@ export default function ChatPage() {
                 updateLastToolCalls(result.toolCalls);
             }
             await finaliseMessage(result.content, result.thinking);
+
+            // Memory: count turn and check if detection is due
+            if (personaId && persona.memoryEnabled !== false) {
+                incrementTurnCount(personaId);
+                const turns = (useAppStore.getState().turnsSinceLastDetection[personaId] ?? 0);
+                const interval = settings.memorySettings.detectionInterval;
+                if (shouldRunDetection(turns, interval)) {
+                    const allMsgs = useAppStore.getState().activeChat?.messages ?? [];
+                    triggerDetection(allMsgs);
+                }
+            }
         } catch (err) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
             setError(msg);
@@ -113,7 +224,7 @@ export default function ChatPage() {
             clearPendingToolCalls();
             setIsStreaming(false);
         }
-    }, [persona, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled, searchEnabled, toolConfigs, addPendingToolCall, updatePendingToolCall, clearPendingToolCalls, updateLastToolCalls]);
+    }, [persona, personaId, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled, searchEnabled, toolConfigs, addPendingToolCall, updatePendingToolCall, clearPendingToolCalls, updateLastToolCalls, incrementTurnCount, triggerDetection]);
 
     const handleSend = useCallback(async () => {
         if (!input.trim() || isStreaming || !persona || !activeChat || !settings) return;
@@ -319,13 +430,25 @@ export default function ChatPage() {
                 }}
             >
                 <div style={{ maxWidth: 800, margin: '0 auto' }}>
+                    {/* Memory suggestion popup */}
+                    {suggestedEntries.length > 0 && (
+                        <MemorySuggestion
+                            entries={suggestedEntries}
+                            personaColor={persona.color}
+                            onAccept={handleAcceptEntry}
+                            onAcceptAll={handleAcceptAll}
+                            onDismiss={handleDismissEntry}
+                            onDismissAll={handleDismissAll}
+                            onEdit={handleEditEntry}
+                        />
+                    )}
                     <div
                         style={{
                             display: 'flex',
                             alignItems: 'center',
                             gap: 10,
                             background: 'rgba(255,255,255,0.04)',
-                            border: `1px solid ${persona.color}33`,
+                            border: `1px solid ${isDetecting ? persona.color + '88' : persona.color + '33'}`,
                             borderRadius: 20,
                             padding: '8px 8px 8px 16px',
                         }}
@@ -441,6 +564,9 @@ export default function ChatPage() {
                     )}
                 </div>
             </div>
+
+            {/* Hearts animation on memory accept */}
+            <FloatingHearts color={persona.color} trigger={showHearts} onComplete={() => setShowHearts(false)} />
         </div>
     );
 }
