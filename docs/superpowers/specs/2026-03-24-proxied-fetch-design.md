@@ -45,43 +45,57 @@ proxiedFetch(url: string | URL, init?: RequestInit): Promise<Response>
 1. Extract the origin (`scheme + host`) from the target URL.
 2. Look up the origin in `proxyRoutes.json`.
 3. If `requiresProxy: true`:
-   - Rewrite the URL to `${VITE_PROXY_URL}${pathname}${search}`.
+   - Rewrite the URL to `${window.__ENV__.PROXY_URL}${pathname}${search}`.
    - Inject `X-Target-URL: <domain from config>` into the request headers.
    - The `domain` value from config is exactly what the Go proxy needs: it appends `RequestURI` to it to build the upstream URL (`main.go:79`).
 4. Otherwise: delegate directly to `fetch` unchanged.
 
-**`VITE_PROXY_URL`** is read from `import.meta.env.VITE_PROXY_URL`.
+**`PROXY_URL`** is read at runtime from `window.__ENV__.PROXY_URL` — not baked into the bundle at build time.
 
 ### Environment Configuration
 
-`VITE_PROXY_URL` is a **Vite build-time** environment variable (`import.meta.env.VITE_PROXY_URL`). It must be set to the publicly reachable URL of the Go proxy — the value is baked into the JS bundle at build time.
+`PROXY_URL` is a **runtime** environment variable. The app reads it from `window.__ENV__.PROXY_URL`, which is injected via a `/config.js` file served by the web server. This makes the Docker image reusable without rebuilding — each deployment sets its own proxy URL.
 
-**Development (`.env.local`):**
-```
-VITE_PROXY_URL=http://localhost:9080
-```
-The developer starts the Go proxy manually with `PORT=9080 go run .`. `VITE_PROXY_URL` must match.
+**How `config.js` is produced:**
 
-**Production (Docker Compose):**
+- **Production (Docker):** A `frontend/docker-entrypoint.sh` generates `/usr/share/nginx/html/config.js` at container start from the `$PROXY_URL` environment variable, then hands off to nginx.
 
-`VITE_PROXY_URL` is passed as a build arg. The Go proxy is already exposed on host port `8081` in `compose.yml`. The frontend build arg points to the proxy's public URL:
+  ```sh
+  #!/bin/sh
+  set -e
+  cat > /usr/share/nginx/html/config.js <<EOF
+  window.__ENV__ = { PROXY_URL: "${PROXY_URL:-}" };
+  EOF
+  exec nginx -g 'daemon off;'
+  ```
+
+  `frontend/Dockerfile` changes `CMD ["nginx", ...]` to `ENTRYPOINT ["/docker-entrypoint.sh"]`.
+
+- **Development (Vite):** `public/config.js` is served as a static file by Vite. This file is gitignored. A `public/config.js.example` is committed as a template:
+
+  ```js
+  window.__ENV__ = { PROXY_URL: 'http://localhost:9080' };
+  ```
+
+  Developers copy `config.js.example` → `config.js` and set their local proxy port.
+
+**`frontend/index.html`:** Add `<script src="/config.js"></script>` as the first script in `<head>` (before the module entry point), so `window.__ENV__` is available before any app code runs.
+
+**`compose.yml`:** Frontend service receives `PROXY_URL` as a runtime environment variable — no build args needed:
 
 ```yaml
 frontend:
-  build:
-    context: ./frontend
-    args:
-      - VITE_PROXY_URL=https://your-proxy-host:8081
+  build: ./frontend
   ports:
     - "80:80"
+  environment:
+    - PROXY_URL=https://your-proxy-host:8081
 
 proxy:
   build: ./backend
   ports:
     - "8081:8080"
 ```
-
-No nginx changes are required. The browser hits the proxy directly at its public port.
 
 ### Changes to Existing Files
 
@@ -133,5 +147,23 @@ api.ts (openai / anthropic / local ollama)
 
 - The Go proxy backend (`backend/main.go`) requires no changes.
 - All other providers (OpenAI, Anthropic, local Ollama, OpenRouter, etc.) are unaffected.
-- `compose.yml` already has the correct `ALLOWED_UPSTREAM_URLS` for both domains.
+- `compose.yml` `ALLOWED_UPSTREAM_URLS` already includes both domains — no proxy backend changes.
 - No changes to routing, store, or UI components.
+
+## Summary of All File Changes
+
+| File | Change |
+|---|---|
+| `src/config/proxyRoutes.json` | **New** — static domain-to-proxy mapping |
+| `src/services/proxiedFetch.ts` | **New** — routing wrapper |
+| `src/services/api.ts` | Replace `fetch` → `proxiedFetch`, remove manual `X-Target-URL` headers |
+| `src/services/tools/braveSearch.ts` | Use real Brave URL, remove `proxyBase`, replace `fetch` → `proxiedFetch` |
+| `src/services/modelMeta/OllamaFetcher.ts` | Remove `upstreamUrl` param, replace `fetch` → `proxiedFetch` |
+| `src/services/modelMeta/registry.ts` | `OllamaFetcher('https://ollama.com')` → `OllamaFetcher()` |
+| `frontend/index.html` | Add `<script src="/config.js">` |
+| `frontend/docker-entrypoint.sh` | **New** — generates `config.js` at container start |
+| `frontend/Dockerfile` | Change `CMD` to use entrypoint script |
+| `frontend/public/config.js.example` | **New** — dev template for `config.js` |
+| `frontend/public/config.js` | Gitignored — created locally by each developer |
+| `compose.yml` | Switch from build args to runtime `environment: PROXY_URL=...` |
+| `.gitignore` | Add `frontend/public/config.js` |
