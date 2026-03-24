@@ -1,5 +1,6 @@
 import type { Provider } from '@/types/providers';
 import type { FetchedModel, ModelMetaFetcher } from './types';
+import { proxiedFetch } from '@/services/proxiedFetch';
 
 interface OllamaModelListEntry {
     id: string;
@@ -16,9 +17,6 @@ interface OllamaShowResponse {
 }
 
 export class OllamaFetcher implements ModelMetaFetcher {
-    // upstreamUrl: when set, adds X-Target-URL to every request (proxy mode for Ollama Cloud)
-    constructor(private readonly upstreamUrl?: string) {}
-
     async fetchModels(provider: Provider): Promise<FetchedModel[]> {
         // Ollama's native API lives at the root, not under /v1
         const baseUrl = provider.baseUrl.replace(/\/v1\/?$/, '');
@@ -26,12 +24,9 @@ export class OllamaFetcher implements ModelMetaFetcher {
         if (provider.apiKey) {
             headers['Authorization'] = `Bearer ${provider.apiKey}`;
         }
-        if (this.upstreamUrl) {
-            headers['X-Target-URL'] = this.upstreamUrl;
-        }
 
         // Use OpenAI-compatible /v1/models — works for both local and cloud Ollama
-        const listResponse = await fetch(`${baseUrl}/v1/models`, { headers });
+        const listResponse = await proxiedFetch(`${baseUrl}/v1/models`, { headers });
         if (!listResponse.ok) {
             throw new Error(`Ollama /v1/models returned ${listResponse.status}`);
         }
@@ -50,7 +45,7 @@ export class OllamaFetcher implements ModelMetaFetcher {
         headers: Record<string, string>,
         slug: string,
     ): Promise<FetchedModel | null> {
-        const response = await fetch(`${baseUrl}/api/show`, {
+        const response = await proxiedFetch(`${baseUrl}/api/show`, {
             method: 'POST',
             headers: { ...headers, 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: slug }),
