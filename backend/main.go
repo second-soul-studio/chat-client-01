@@ -40,12 +40,17 @@ func isAllowed(value string, list []string) bool {
 func setCORSHeaders(w http.ResponseWriter, origin string) {
 	w.Header().Set("Access-Control-Allow-Origin", origin)
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Target-URL, X-Subscription-Token")
+	w.Header().Set("Access-Control-Allow-Headers", "Authorization, Content-Type, X-Target-URL, X-Subscription-Token, X-Loc-Lat, X-Loc-Long, X-Loc-Timezone, X-Loc-City, X-Loc-State, X-Loc-State-Name, X-Loc-Country, X-Loc-Postal-Code")
 	w.Header().Set("Access-Control-Max-Age", "86400")
 }
 
 func handleProxy(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
+
+	// Set CORS headers early so error responses are also readable by the browser.
+	if origin != "" {
+		setCORSHeaders(w, origin)
+	}
 
 	// ── Origin check ──────────────────────────────────────────────────────────
 	// Only enforced when ALLOWED_ORIGINS is configured.
@@ -58,9 +63,6 @@ func handleProxy(w http.ResponseWriter, r *http.Request) {
 
 	// ── CORS preflight ────────────────────────────────────────────────────────
 	if r.Method == http.MethodOptions {
-		if origin != "" {
-			setCORSHeaders(w, origin)
-		}
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
