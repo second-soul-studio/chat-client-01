@@ -1,6 +1,7 @@
 import type { Message, AppSettings, Persona } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import { proxiedFetch } from './proxiedFetch';
+import { formatMemoryForPrompt } from './memory';
 
 // ─── Token Estimation ─────────────────────────────────────────────────────────
 
@@ -71,10 +72,16 @@ export interface SendMessageOptions {
 export async function sendMessage(options: SendMessageOptions): Promise<{ content: string; thinking?: string }> {
     const { messages, settings, persona, provider, model, thinkingEnabled, onChunk, onThinkingChunk } = options;
 
-    // Build system prompt: global → persona → per-model user addition
+    // Build memory block (empty string if no memories or memory disabled)
+    const memoryBlock = persona.memoryEnabled !== false
+        ? await formatMemoryForPrompt(persona.id)
+        : '';
+
+    // Build system prompt: global → persona → memory → per-model user addition
     const systemPrompt = [
         settings.globalSystemPrompt,
         persona.systemPrompt,
+        memoryBlock,
         model.userSystemPrompt,
     ].filter(Boolean).join('\n\n');
 
