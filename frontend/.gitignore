@@ -28,3 +28,6 @@ dist-ssr/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Runtime config (generated per-environment, not committed)
+public/config.js

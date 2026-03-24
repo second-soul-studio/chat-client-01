@@ -4,6 +4,8 @@ services:
     build: ./frontend
     ports:
       - "80:80"
+    environment:
+      - PROXY_URL=https://your-proxy-host:8081
     restart: unless-stopped
 
   proxy:

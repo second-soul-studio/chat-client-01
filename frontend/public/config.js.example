@@ -1,0 +1,5 @@
+// Copy this file to config.js and set PROXY_URL to your local proxy address.
+// config.js is gitignored — do not commit it.
+window.__ENV__ = {
+  PROXY_URL: 'http://localhost:9080',
+};
