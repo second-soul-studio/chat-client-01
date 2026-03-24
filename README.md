@@ -10,7 +10,7 @@ Licence: GPL-3.0
 
 ```
 frontend/   # React + Vite PWA (the chat client)
-backend/    # Go CORS proxy (required for Ollama Cloud only)
+backend/    # Go CORS proxy (required for Ollama Cloud and Brave Search)
 ```
 
 ---
@@ -30,46 +30,80 @@ backend/    # Go CORS proxy (required for Ollama Cloud only)
 ```bash
 cd frontend
 pnpm install
+cp config.js.example public/config.js
+# Edit public/config.js if your proxy runs on a different port
 pnpm dev        # starts Vite dev server at http://localhost:5173
 ```
 
-### Ollama Cloud proxy (optional)
+Or use the convenience script:
 
-Only needed if you want to use [Ollama Cloud](https://ollama.com) from the browser.
-The proxy is a thin passthrough — it adds CORS headers and forwards requests unchanged.
+```bash
+cd frontend && ./start.sh
+```
+
+### Proxy
+
+The proxy is required for providers and tools that enforce strict CORS policies — currently **Ollama Cloud** and **Brave Search**. It is a thin passthrough that adds CORS headers and forwards requests unchanged.
 
 ```bash
 cd backend
-cp .env.example .env
-# Edit .env as needed, then:
-ALLOWED_UPSTREAM_URLS=https://ollama.com \
+./start.sh
+# Starts the proxy on port 9080 with Ollama Cloud + Brave Search allowed
+```
+
+Or manually:
+
+```bash
+cd backend
+ALLOWED_UPSTREAM_URLS=https://ollama.com,https://api.search.brave.com \
 ALLOWED_ORIGINS=http://localhost:5173 \
-PORT=8081 \
+PORT=9080 \
 go run .
 ```
 
-The proxy will be available at `http://localhost:8081`.
+The proxy will be available at `http://localhost:9080`. Make sure `public/config.js` points to the same port:
+
+```js
+window.__ENV__ = {
+  PROXY_URL: 'http://localhost:9080',
+};
+```
 
 ---
 
 ## Production Deployment (Docker Compose)
 
 ```bash
-cp backend/.env.example backend/.env
-# Edit backend/.env: set ALLOWED_ORIGINS to your public frontend domain
+# Edit compose.yml:
+#   - Set PROXY_URL in the frontend service to the public proxy URL
+#   - Set ALLOWED_ORIGINS in the proxy service to your public frontend domain
 docker compose up -d --build
 ```
 
-| Service  | Port | Description             |
-|----------|------|-------------------------|
-| frontend | 80   | nginx serving the PWA   |
-| proxy    | 8081 | Ollama Cloud CORS proxy |
+| Service  | Port | Description                         |
+|----------|------|-------------------------------------|
+| frontend | 80   | nginx serving the PWA               |
+| proxy    | 8081 | CORS proxy (Ollama Cloud, Brave Search) |
 
 For HTTPS (strongly recommended), place nginx or Caddy in front of both services.
 
 ---
 
-## Environment Variables — Proxy
+## Environment Variables
+
+### Frontend
+
+The frontend reads runtime config from `/config.js`, which is generated at container start (Docker) or provided manually (development).
+
+| Variable     | Required | Default | Description                                               |
+|--------------|----------|---------|-----------------------------------------------------------|
+| `PROXY_URL`  | no       | `""`    | Base URL of the CORS proxy. Empty = same-origin routing.  |
+
+**Development:** Copy `frontend/config.js.example` to `frontend/public/config.js` and set `PROXY_URL` to your local proxy address (e.g. `http://localhost:9080`).
+
+**Docker:** Set via `environment: - PROXY_URL=https://...` in `compose.yml`. The entrypoint script generates `/config.js` automatically at container start.
+
+### Proxy
 
 | Variable               | Required | Default | Description                                                                 |
 |------------------------|----------|---------|-----------------------------------------------------------------------------|
@@ -80,41 +114,37 @@ For HTTPS (strongly recommended), place nginx or Caddy in front of both services
 Example:
 
 ```env
-ALLOWED_UPSTREAM_URLS=https://ollama.com
+ALLOWED_UPSTREAM_URLS=https://ollama.com,https://api.search.brave.com
 ALLOWED_ORIGINS=https://your-domain.com,http://localhost:5173
-PORT=8080
+PORT=9080
 ```
 
 ---
 
 ## Adding Ollama Cloud as a Provider
 
-1. Deploy the proxy (see above) and note its public URL
+1. Start the proxy (see above)
 2. In Second Soul → Settings → Providers → Add Provider:
    - **Name:** Ollama Cloud
-   - **Base URL:** `https://your-proxy.example.com/v1`
+   - **Base URL:** `https://ollama.com`
    - **API Key:** your Ollama API key
    - **Adapter:** Ollama Cloud (via proxy)
 3. Click **Sync Models** to load the available model list
 
 ### Why a proxy?
 
-Ollama Cloud does not send CORS headers, so browsers cannot call it directly.
-The proxy is a zero-data-retention passthrough: it adds CORS headers and forwards
-every request byte-for-byte to `https://ollama.com` without logging, caching, or
-modifying the payload. The API key never leaves the browser except as part of the
-forwarded request. You are encouraged to run your own proxy instance.
+Ollama Cloud and Brave Search do not send CORS headers, so browsers cannot call them directly. The proxy is a zero-data-retention passthrough: it adds CORS headers and forwards every request byte-for-byte to the upstream without logging, caching, or modifying the payload. The API key never leaves the browser except as part of the forwarded request. You are encouraged to run your own proxy instance.
 
 ---
 
 ## Supported Providers (direct, no proxy needed)
 
-| Provider   | Adapter              | Model Sync |
-|------------|----------------------|------------|
-| OpenAI     | OpenAI-compatible    | yes        |
-| Anthropic  | Anthropic            | —          |
-| OpenRouter | OpenAI-compatible    | yes        |
-| Mistral    | OpenAI-compatible    | yes        |
-| NanoGPT    | OpenAI-compatible    | yes        |
-| Ollama (local) | Ollama (local)  | yes        |
-| Ollama Cloud | Ollama Cloud (via proxy) | yes  |
+| Provider       | Adapter                    | Model Sync |
+|----------------|----------------------------|------------|
+| OpenAI         | OpenAI-compatible          | yes        |
+| Anthropic      | Anthropic                  | —          |
+| OpenRouter     | OpenAI-compatible          | yes        |
+| Mistral        | OpenAI-compatible          | yes        |
+| NanoGPT        | OpenAI-compatible          | yes        |
+| Ollama (local) | Ollama (local)             | yes        |
+| Ollama Cloud   | Ollama Cloud (via proxy)   | yes        |
