@@ -111,7 +111,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     }
 
     // openai, ollama, ollama-cloud all use OpenAI-compatible format;
-    // ollama-cloud adds X-Target-URL so the CORS proxy knows where to forward.
+    // proxiedFetch handles CORS proxy routing for ollama-cloud transparently.
     const extraHeaders: Record<string, string> = {};
     const extraBodyParams: Record<string, unknown> = {};
 
