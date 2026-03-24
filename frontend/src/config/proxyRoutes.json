@@ -1,0 +1,4 @@
+[
+  { "domain": "https://ollama.com", "requiresProxy": true },
+  { "domain": "https://api.search.brave.com", "requiresProxy": true }
+]
