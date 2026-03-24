@@ -1,6 +1,7 @@
 import type { Message, AppSettings, Persona, ToolCallRecord, ToolConfig } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import { sendMessage, buildOpenAIHeaders, readStream, extractThinkingFromText, buildContextWindow } from './api';
+import { proxiedFetch } from './proxiedFetch';
 import { getToolByName, getAllTools } from './tools/registry';
 import type { ToolDefinition } from './tools/types';
 
@@ -142,7 +143,6 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
         baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1';
     }
     const extraHeaders: Record<string, string> = {};
-    if (provider.adapter === 'ollama-cloud') extraHeaders['X-Target-URL'] = 'https://ollama.com';
 
     const openAITools = activeToolDefs.map(t => ({
         type: 'function',
@@ -159,7 +159,7 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
     let context = buildRawContext(trimmedMessages, systemPrompt);
 
     for (let iter = 0; iter < 5; iter++) {
-        const response = await fetch(`${baseUrl}/chat/completions`, {
+        const response = await proxiedFetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: { ...buildOpenAIHeaders(provider.apiKey), ...extraHeaders },
             body: JSON.stringify({
