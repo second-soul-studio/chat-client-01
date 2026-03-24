@@ -20,6 +20,7 @@ export interface Persona {
         maxOutputTokens?: number;
     };
     order?: number;
+    memoryEnabled?: boolean;        // default true — set false to disable memory for this persona
 }
 
 export interface ToolCallRecord {
@@ -57,6 +58,7 @@ export interface AppSettings {
     globalSystemPrompt: string;
     defaultModelId: string | null;
     theme: 'dark';
+    memorySettings: MemorySettings;
 }
 
 export interface BraveSearchSettings {
@@ -77,4 +79,49 @@ export interface ToolConfig {
     enabled: boolean;
     apiKey: string;
     settings: Record<string, unknown>;
+}
+
+// ─── Memory System ────────────────────────────────────────────────────────────
+
+export type MemoryType = 'emotional' | 'hard_fact' | 'preference' | 'event' | 'nsfw';
+
+export const MEMORY_TYPE_EMOJI: Record<MemoryType, string> = {
+    emotional: '💫',
+    hard_fact: '📌',
+    preference: '⚙️',
+    event: '📅',
+    nsfw: '🔥',
+};
+
+export interface MemoryPendingEntry {
+    id: string;
+    personaId: string;
+    type: MemoryType;
+    content: string;
+    extractedAt: number;
+    sourceChatId: string;
+    status: 'suggested' | 'accepted' | 'dismissed';
+}
+
+export interface MemoryTopic {
+    id: string;                   // "{personaId}-{slug}"
+    personaId: string;
+    slug: string;                 // "profile", "interests", etc.
+    content: string;              // Markdown
+    updatedAt: number;
+}
+
+export interface MemoryMeta {
+    personaId: string;            // PK
+    indexContent: string;         // Markdown index (topic overview with one-liners)
+    lastConsolidatedAt: number | null;
+    pendingCount: number;
+    nsfwEnabled: boolean;
+}
+
+export interface MemorySettings {
+    workerModelId: string | null;     // null = use chat model
+    autoConsolidate: boolean;
+    consolidationThreshold: number;   // 5–25, default 10
+    detectionInterval: number;        // 3–10 turns, default 5
 }

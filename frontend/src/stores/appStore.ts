@@ -11,6 +11,7 @@ import {
     getChatsForPersona, saveChat, deleteChat as dbDeleteChat,
     getChat,
     getToolConfigs, saveToolConfig, deleteToolConfig as dbDeleteToolConfig,
+    deleteAllMemoryForPersona,
 } from '@/services/db';
 import { getFetcher } from '@/services/modelMeta/registry';
 
@@ -79,6 +80,11 @@ interface AppState {
 
     // ─── Last Tool Calls (store tool calls on assistant message) ──────────────
     updateLastToolCalls: (toolCalls: ToolCallRecord[]) => void;
+
+    // ─── Memory Turn Tracking (in-memory only, not persisted) ────────────────
+    turnsSinceLastDetection: Record<string, number>;
+    incrementTurnCount: (personaId: string) => void;
+    resetTurnCount: (personaId: string) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -123,6 +129,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     async removePersona(id) {
         await dbDeletePersona(id);
+        await deleteAllMemoryForPersona(id);
         set(s => ({ personas: s.personas.filter(p => p.id !== id) }));
     },
 
@@ -404,4 +411,22 @@ export const useAppStore = create<AppState>((set, get) => ({
             return { activeChat: { ...s.activeChat, messages } };
         });
     },
+
+    // ─── Memory Turn Tracking ────────────────────────────────────────────────
+
+    turnsSinceLastDetection: {},
+
+    incrementTurnCount: (personaId) => set(state => ({
+        turnsSinceLastDetection: {
+            ...state.turnsSinceLastDetection,
+            [personaId]: (state.turnsSinceLastDetection[personaId] ?? 0) + 1,
+        },
+    })),
+
+    resetTurnCount: (personaId) => set(state => ({
+        turnsSinceLastDetection: {
+            ...state.turnsSinceLastDetection,
+            [personaId]: 0,
+        },
+    })),
 }));
