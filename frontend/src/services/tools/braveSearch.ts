@@ -1,6 +1,7 @@
 import type { ToolConfig, BraveSearchSettings } from '@/types';
 import type { ToolDefinition, ToolResult } from './types';
 import { registerTool } from './registry';
+import { proxiedFetch } from '@/services/proxiedFetch';
 
 // ─── Result Mapping ───────────────────────────────────────────────────────────
 
@@ -18,11 +19,9 @@ export function mapBraveResults(raw: Record<string, unknown>): ToolResult['resul
 
 // ─── API Call ─────────────────────────────────────────────────────────────────
 
-// proxyBase is injected for testability; defaults to '' (same origin) in production.
 export async function searchBrave(
     query: string,
     config: ToolConfig,
-    proxyBase = '',
 ): Promise<ToolResult> {
     const settings = config.settings as unknown as BraveSearchSettings;
     const params = new URLSearchParams({ q: query });
@@ -38,14 +37,13 @@ export async function searchBrave(
     if (settings.country) locationHeaders['x-loc-country'] = settings.country;
     if (settings.postalCode) locationHeaders['x-loc-postal-code'] = settings.postalCode;
 
-    const response = await fetch(
-        `${proxyBase}/res/v1/web/search?${params}`,
+    const response = await proxiedFetch(
+        `https://api.search.brave.com/res/v1/web/search?${params}`,
         {
             headers: {
                 'Accept': 'application/json',
                 'Accept-Encoding': 'gzip',
                 'X-Subscription-Token': config.apiKey,
-                'X-Target-URL': 'https://api.search.brave.com',
                 ...locationHeaders,
             },
         },

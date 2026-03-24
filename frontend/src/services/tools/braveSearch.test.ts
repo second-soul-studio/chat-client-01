@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mapBraveResults } from './braveSearch';
+import { searchBrave } from './braveSearch';
+import type { ToolConfig } from '@/types';
 
 describe('mapBraveResults', () => {
     it('returns top 3 results with title, url, snippet', () => {
@@ -27,5 +29,43 @@ describe('mapBraveResults', () => {
     it('returns empty array when web.results is missing', () => {
         expect(mapBraveResults({})).toHaveLength(0);
         expect(mapBraveResults({ web: {} })).toHaveLength(0);
+    });
+});
+
+vi.mock('@/services/proxiedFetch', () => ({
+    proxiedFetch: vi.fn(),
+}));
+
+describe('searchBrave', () => {
+    const mockConfig: ToolConfig = {
+        id: 'brave-search',
+        displayName: 'Brave',
+        enabled: true,
+        apiKey: 'test-key',
+        settings: { safesearch: 'moderate' },
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('calls the real Brave URL via proxiedFetch', async () => {
+        const { proxiedFetch } = await import('@/services/proxiedFetch');
+        const mockFetch = proxiedFetch as ReturnType<typeof vi.fn>;
+        mockFetch.mockResolvedValue(
+            new Response(JSON.stringify({ web: { results: [{ title: 'T', url: 'https://t.com', description: 'S' }] } }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' },
+            }),
+        );
+
+        const result = await searchBrave('test query', mockConfig);
+
+        expect(mockFetch).toHaveBeenCalledOnce();
+        const [calledUrl] = mockFetch.mock.calls[0] as [string];
+        expect(calledUrl).toContain('https://api.search.brave.com/res/v1/web/search');
+        expect(calledUrl).toContain('q=test+query');
+        expect(result.results).toHaveLength(1);
+        expect(result.results[0].title).toBe('T');
     });
 });
