@@ -241,7 +241,7 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
     }
 
     // Final streaming turn — no tools, get the actual response
-    const finalResponse = await fetch(`${baseUrl}/chat/completions`, {
+    const finalResponse = await proxiedFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: { ...buildOpenAIHeaders(provider.apiKey), ...extraHeaders },
         body: JSON.stringify({
