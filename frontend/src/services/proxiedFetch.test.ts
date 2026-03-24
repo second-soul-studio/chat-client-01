@@ -27,7 +27,7 @@ describe('proxiedFetch', () => {
         expect(mockFetch).toHaveBeenCalledOnce();
         const [calledUrl, calledInit] = mockFetch.mock.calls[0] as [string, RequestInit];
         expect(calledUrl).toBe('http://localhost:9080/res/v1/web/search?q=test');
-        expect((calledInit?.headers as Record<string, string>)['X-Target-URL']).toBe('https://api.search.brave.com');
+        expect((calledInit?.headers as Headers).get('X-Target-URL')).toBe('https://api.search.brave.com');
     });
 
     it('passes through non-proxied URLs unchanged', async () => {
@@ -53,10 +53,10 @@ describe('proxiedFetch', () => {
         });
 
         const [, calledInit] = mockFetch.mock.calls[0] as [string, RequestInit];
-        const headers = calledInit?.headers as Record<string, string>;
-        expect(headers['X-Target-URL']).toBe('https://ollama.com');
-        expect(headers['Authorization']).toBe('Bearer token');
-        expect(headers['Content-Type']).toBe('application/json');
+        const headers = calledInit?.headers as Headers;
+        expect(headers.get('X-Target-URL')).toBe('https://ollama.com');
+        expect(headers.get('Authorization')).toBe('Bearer token');
+        expect(headers.get('Content-Type')).toBe('application/json');
     });
 
     it('falls back to same-origin when PROXY_URL is empty', async () => {

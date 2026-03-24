@@ -27,11 +27,8 @@ export async function proxiedFetch(
     const proxyBase = getProxyUrl();
     const rewritten = `${proxyBase}${parsed.pathname}${parsed.search}`;
 
-    const existingHeaders = init?.headers ?? {};
-    const headers: Record<string, string> = {
-        ...(existingHeaders as Record<string, string>),
-        'X-Target-URL': route.domain,
-    };
+    const headers = new Headers(init?.headers);
+    headers.set('X-Target-URL', route.domain);
 
     return fetch(rewritten, { ...init, headers });
 }
