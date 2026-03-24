@@ -279,6 +279,11 @@ export async function getAcceptedPendingEntries(personaId: string): Promise<Memo
     return all.filter(e => e.status === 'accepted');
 }
 
+export async function getSuggestedPendingEntries(personaId: string): Promise<MemoryPendingEntry[]> {
+    const all = await getPendingEntries(personaId);
+    return all.filter(e => e.status === 'suggested');
+}
+
 export async function savePendingEntry(entry: MemoryPendingEntry): Promise<void> {
     const db = await getDB();
     await db.put('memoryPending', entry);

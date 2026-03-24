@@ -5,7 +5,8 @@ import { useAppStore } from '@/stores/appStore';
 import {
     getMemoryMeta, saveMemoryMeta,
     getMemoryTopics, saveMemoryTopic, deleteMemoryTopic,
-    getAcceptedPendingEntries, savePendingEntry, deletePendingEntry,
+    getAcceptedPendingEntries, getSuggestedPendingEntries,
+    savePendingEntry, deletePendingEntry,
 } from '@/services/db';
 import { consolidateMemory } from '@/services/memory';
 import type { MemoryMeta, MemoryTopic, MemoryPendingEntry, MemoryType } from '@/types';
@@ -29,6 +30,7 @@ export default function MemoryPage() {
     const [meta, setMeta] = useState<MemoryMeta | null>(null);
     const [topics, setTopics] = useState<MemoryTopic[]>([]);
     const [pending, setPending] = useState<MemoryPendingEntry[]>([]);
+    const [suggested, setSuggested] = useState<MemoryPendingEntry[]>([]);
     const [isConsolidating, setIsConsolidating] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -44,14 +46,16 @@ export default function MemoryPage() {
 
     const loadData = useCallback(async () => {
         if (!personaId) return;
-        const [m, t, p] = await Promise.all([
+        const [m, t, p, s] = await Promise.all([
             getMemoryMeta(personaId),
             getMemoryTopics(personaId),
             getAcceptedPendingEntries(personaId),
+            getSuggestedPendingEntries(personaId),
         ]);
         setMeta(m ?? null);
         setTopics(t);
         setPending(p);
+        setSuggested(s);
     }, [personaId]);
 
     useEffect(() => { loadData(); }, [loadData]);
@@ -91,6 +95,30 @@ export default function MemoryPage() {
         if (meta) {
             await saveMemoryMeta({ ...meta, pendingCount: Math.max(0, meta.pendingCount - 1) });
         }
+        await loadData();
+    };
+
+    const handleAcceptSuggested = async (entry: MemoryPendingEntry) => {
+        const accepted = { ...entry, status: 'accepted' as const };
+        await savePendingEntry(accepted);
+        const currentMeta = meta ?? { personaId: personaId!, indexContent: '', lastConsolidatedAt: null, pendingCount: 0, nsfwEnabled: false };
+        await saveMemoryMeta({ ...currentMeta, pendingCount: currentMeta.pendingCount + 1 });
+        await loadData();
+    };
+
+    const handleAcceptAllSuggested = async () => {
+        const currentMeta = meta ?? { personaId: personaId!, indexContent: '', lastConsolidatedAt: null, pendingCount: 0, nsfwEnabled: false };
+        let count = currentMeta.pendingCount;
+        for (const entry of suggested) {
+            await savePendingEntry({ ...entry, status: 'accepted' as const });
+            count++;
+        }
+        await saveMemoryMeta({ ...currentMeta, pendingCount: count });
+        await loadData();
+    };
+
+    const handleDismissSuggested = async (entryId: string) => {
+        await deletePendingEntry(entryId);
         await loadData();
     };
 
@@ -437,6 +465,54 @@ export default function MemoryPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Suggested entries — needs review */}
+                {suggested.length > 0 && (
+                    <div style={{ marginBottom: 28 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <div style={{ fontSize: 10, color, letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace" }}>
+                                ✨ New Suggestions ({suggested.length})
+                            </div>
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                    onClick={handleAcceptAllSuggested}
+                                    style={{ padding: '3px 8px', borderRadius: 6, border: `1px solid ${color}44`, background: `${color}18`, color, fontSize: 10, fontFamily: "'Courier New', monospace", cursor: 'pointer' }}
+                                >
+                                    Accept All
+                                </button>
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {suggested.map(entry => (
+                                <div
+                                    key={entry.id}
+                                    style={{
+                                        display: 'flex', alignItems: 'center', gap: 10,
+                                        padding: '10px 14px', borderRadius: 10,
+                                        background: `${color}08`, border: `1px solid ${color}22`,
+                                    }}
+                                >
+                                    <span style={{ fontSize: 14, flexShrink: 0 }}>{MEMORY_TYPE_EMOJI[entry.type]}</span>
+                                    <span style={{ flex: 1, fontSize: 13, color: 'rgba(255,255,255,0.6)', fontFamily: "'Lora', Georgia, serif", lineHeight: 1.5 }}>
+                                        {entry.content}
+                                    </span>
+                                    <button
+                                        onClick={() => handleAcceptSuggested(entry)}
+                                        style={{ flexShrink: 0, padding: '4px 8px', borderRadius: 6, border: `1px solid ${color}44`, background: `${color}18`, color, fontSize: 11, cursor: 'pointer' }}
+                                    >
+                                        ✓
+                                    </button>
+                                    <button
+                                        onClick={() => handleDismissSuggested(entry.id)}
+                                        style={{ flexShrink: 0, padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.06)', background: 'transparent', color: 'rgba(255,255,255,0.2)', fontSize: 11, cursor: 'pointer' }}
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
 
                 {/* Pending entries section */}
                 {pending.length > 0 && (

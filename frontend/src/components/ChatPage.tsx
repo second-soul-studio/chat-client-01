@@ -7,7 +7,7 @@ import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
 import MemorySuggestion from './MemorySuggestion';
 import FloatingHearts from './FloatingHearts';
 import { detectMemories, shouldRunDetection, consolidateMemory } from '@/services/memory';
-import { savePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries } from '@/services/db';
+import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries } from '@/services/db';
 import type { Message, MemoryPendingEntry } from '@/types';
 
 export default function ChatPage() {
@@ -102,13 +102,15 @@ export default function ChatPage() {
             resetTurnCount(personaId);
 
             if (entries.length > 0) {
+                // Always persist to DB first so entries survive navigation
+                for (const entry of entries) {
+                    await savePendingEntry(entry);
+                }
+
                 if (silent) {
-                    // Session-end: save directly as suggested (user sees on Memory Page)
-                    for (const entry of entries) {
-                        await savePendingEntry(entry);
-                    }
                     await maybeAutoConsolidate();
                 } else {
+                    // Show in-chat popup for immediate review
                     setSuggestedEntries(prev => [...prev, ...entries]);
                 }
             }
@@ -161,18 +163,25 @@ export default function ChatPage() {
         await maybeAutoConsolidate();
     }, [suggestedEntries, handleAcceptEntry, maybeAutoConsolidate]);
 
-    const handleDismissEntry = useCallback((entryId: string) => {
+    const handleDismissEntry = useCallback(async (entryId: string) => {
+        await deletePendingEntry(entryId);
         setSuggestedEntries(prev => prev.filter(e => e.id !== entryId));
     }, []);
 
-    const handleDismissAll = useCallback(() => {
+    const handleDismissAll = useCallback(async () => {
+        for (const entry of suggestedEntries) {
+            await deletePendingEntry(entry.id);
+        }
         setSuggestedEntries([]);
-    }, []);
+    }, [suggestedEntries]);
 
-    const handleEditEntry = useCallback((entryId: string, newContent: string) => {
-        setSuggestedEntries(prev =>
-            prev.map(e => e.id === entryId ? { ...e, content: newContent } : e)
-        );
+    const handleEditEntry = useCallback(async (entryId: string, newContent: string) => {
+        setSuggestedEntries(prev => {
+            const updated = prev.map(e => e.id === entryId ? { ...e, content: newContent } : e);
+            const entry = updated.find(e => e.id === entryId);
+            if (entry) savePendingEntry(entry);
+            return updated;
+        });
     }, []);
 
     const doSend = useCallback(async (_content: string, priorMessages: Message[]) => {
