@@ -6,8 +6,8 @@ import { toolLoop } from '@/services/toolLoop';
 import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
 import MemorySuggestion from './MemorySuggestion';
 import FloatingHearts from './FloatingHearts';
-import { detectMemories, shouldRunDetection } from '@/services/memory';
-import { savePendingEntry, getMemoryMeta, saveMemoryMeta } from '@/services/db';
+import { detectMemories, shouldRunDetection, consolidateMemory } from '@/services/memory';
+import { savePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries } from '@/services/db';
 import type { Message, MemoryPendingEntry } from '@/types';
 
 export default function ChatPage() {
@@ -68,6 +68,24 @@ export default function ChatPage() {
 
     // ─── Memory Detection ─────────────────────────────────────────────────────
 
+    const maybeAutoConsolidate = useCallback(async () => {
+        if (!personaId || !settings?.memorySettings.autoConsolidate) return;
+        try {
+            const accepted = await getAcceptedPendingEntries(personaId);
+            if (accepted.length < settings.memorySettings.consolidationThreshold) return;
+
+            const workerModelId = settings.memorySettings.workerModelId;
+            const modelId = workerModelId ?? persona?.modelId ?? settings.defaultModelId;
+            const model = modelId ? modelConfigs.find(m => m.id === modelId) : null;
+            const provider = model ? providers.find(p => p.id === model.providerId && p.enabled) : null;
+            if (!model || !provider) return;
+
+            await consolidateMemory(personaId, provider, model);
+        } catch (err) {
+            console.error('Auto-consolidation failed:', err);
+        }
+    }, [personaId, settings, persona, modelConfigs, providers]);
+
     const triggerDetection = useCallback(async (msgs: Message[], silent = false) => {
         if (!personaId || !activeChat || !settings || !persona || persona.memoryEnabled === false) return;
 
@@ -89,6 +107,7 @@ export default function ChatPage() {
                     for (const entry of entries) {
                         await savePendingEntry(entry);
                     }
+                    await maybeAutoConsolidate();
                 } else {
                     setSuggestedEntries(prev => [...prev, ...entries]);
                 }
@@ -98,7 +117,7 @@ export default function ChatPage() {
         } finally {
             if (!silent) setIsDetecting(false);
         }
-    }, [personaId, activeChat, settings, persona, modelConfigs, providers, resetTurnCount]);
+    }, [personaId, activeChat, settings, persona, modelConfigs, providers, resetTurnCount, maybeAutoConsolidate]);
 
     // Session-end detection: fire-and-forget on unmount
     useEffect(() => {
@@ -139,7 +158,8 @@ export default function ChatPage() {
         for (const entry of suggestedEntries) {
             await handleAcceptEntry(entry);
         }
-    }, [suggestedEntries, handleAcceptEntry]);
+        await maybeAutoConsolidate();
+    }, [suggestedEntries, handleAcceptEntry, maybeAutoConsolidate]);
 
     const handleDismissEntry = useCallback((entryId: string) => {
         setSuggestedEntries(prev => prev.filter(e => e.id !== entryId));

@@ -52,6 +52,7 @@ const DEFAULT_FORM = {
     paletteIndex: 0,
     showThinking: false,
     thinkingEnabled: false,
+    memoryEnabled: true,
     modelId: null as string | null,
 };
 
@@ -76,6 +77,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 paletteIndex: pi >= 0 ? pi : 0,
                 showThinking: persona.showThinking,
                 thinkingEnabled: persona.thinkingEnabled,
+                memoryEnabled: persona.memoryEnabled !== false,
                 modelId: persona.modelId,
             };
         }
@@ -99,6 +101,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 online: true,
                 showThinking: form.showThinking,
                 thinkingEnabled: form.thinkingEnabled,
+                memoryEnabled: form.memoryEnabled,
                 avatarUrl: null,
                 modelId: form.modelId,
             };
@@ -249,6 +252,27 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                             checked={form.thinkingEnabled}
                             color={palette.color}
                             onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
+                        />
+                    </div>
+
+                    {/* Memory toggle */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 0',
+                            marginBottom: 8,
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Memory</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Remember things from your conversations</div>
+                        </div>
+                        <Toggle
+                            checked={form.memoryEnabled}
+                            color={palette.color}
+                            onChange={v => setForm(f => ({ ...f, memoryEnabled: v }))}
                         />
                     </div>
 

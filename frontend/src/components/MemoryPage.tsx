@@ -201,6 +201,18 @@ export default function MemoryPage() {
                     )}
                 </div>
 
+                {/* Memory disabled notice */}
+                {persona.memoryEnabled === false && (
+                    <div style={{
+                        padding: '14px 16px', marginBottom: 16, borderRadius: 10,
+                        background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
+                        color: 'rgba(255,255,255,0.4)', fontSize: 13, fontFamily: "'Lora', Georgia, serif",
+                        textAlign: 'center',
+                    }}>
+                        Memory is disabled for this persona. Enable it in the persona settings to start remembering.
+                    </div>
+                )}
+
                 {/* NSFW toggle */}
                 <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -432,6 +444,11 @@ export default function MemoryPage() {
                         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace", marginBottom: 10 }}>
                             Pending Entries ({pending.length})
                         </div>
+                        {pending.length > 25 && (
+                            <div style={{ padding: '8px 12px', marginBottom: 8, borderRadius: 8, background: 'rgba(234,179,8,0.08)', border: '1px solid rgba(234,179,8,0.2)', color: 'rgba(234,179,8,0.7)', fontSize: 11, fontFamily: "'Courier New', monospace" }}>
+                                You have many pending entries. Consider consolidating.
+                            </div>
+                        )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             {pending.map(entry => (
                                 <div
