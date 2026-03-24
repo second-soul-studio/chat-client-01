@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mapBraveResults } from './braveSearch';
-import { searchBrave } from './braveSearch';
+import { mapBraveResults, searchBrave } from './braveSearch';
 import type { ToolConfig } from '@/types';
 
 describe('mapBraveResults', () => {
