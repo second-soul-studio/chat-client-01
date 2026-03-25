@@ -52,6 +52,7 @@ export interface Chat {
     createdAt: number;
     updatedAt: number;
     messages: Message[];
+    lastDetectionAt: number | null; // message count at last memory detection
 }
 
 export interface AppSettings {

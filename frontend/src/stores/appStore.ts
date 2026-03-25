@@ -85,6 +85,7 @@ interface AppState {
     turnsSinceLastDetection: Record<string, number>;
     incrementTurnCount: (personaId: string) => void;
     resetTurnCount: (personaId: string) => void;
+    setTurnCount: (personaId: string, count: number) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -273,6 +274,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             createdAt: Date.now(),
             updatedAt: Date.now(),
             messages: [],
+            lastDetectionAt: null,
         };
         set({ activePersonaId: personaId, activeChat: chat });
     },
@@ -427,6 +429,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         turnsSinceLastDetection: {
             ...state.turnsSinceLastDetection,
             [personaId]: 0,
+        },
+    })),
+
+    setTurnCount: (personaId, count) => set(state => ({
+        turnsSinceLastDetection: {
+            ...state.turnsSinceLastDetection,
+            [personaId]: count,
         },
     })),
 }));

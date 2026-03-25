@@ -9,6 +9,8 @@ Rules:
 - Empty array if nothing worth remembering
 - No duplicates of facts across categories - if a fact belongs to two categories, prioritize nsfw > emotional > preference > event > hard_fact
 - Don't include transient facts ("I'm thirsty" is not a memory, but "User likes fruit tea" is)
+- Before outputting, review your list and remove any entries that are semantically redundant with each other. If two entries convey the same fact, keep only the more specific or informative one. Output each distinct fact only once.
+- If an "ALREADY KNOWN" section is provided, do NOT re-extract any fact already listed there. Only extract genuinely new information.
 
 Output ONLY a JSON array, no markdown fences:
 [{"type": "hard_fact", "content": "..."}, ...]

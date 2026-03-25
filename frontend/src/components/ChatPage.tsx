@@ -7,7 +7,7 @@ import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
 import MemorySuggestion from './MemorySuggestion';
 import FloatingHearts from './FloatingHearts';
 import { detectMemories, shouldRunDetection, consolidateMemory } from '@/services/memory';
-import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries, getSuggestedPendingEntries, deleteExpiredSuggestedEntries, getSettings } from '@/services/db';
+import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries, getSuggestedPendingEntries, deleteExpiredSuggestedEntries, getSettings, updateChatLastDetection } from '@/services/db';
 import type { Message, MemoryPendingEntry } from '@/types';
 
 export default function ChatPage() {
@@ -30,6 +30,7 @@ export default function ChatPage() {
         updateLastToolCalls,
         incrementTurnCount,
         resetTurnCount,
+        setTurnCount,
     } = useAppStore();
 
     const persona = personas.find(p => p.id === personaId);
@@ -46,14 +47,25 @@ export default function ChatPage() {
     const [suggestedEntries, setSuggestedEntries] = useState<MemoryPendingEntry[]>([]);
     const [isDetecting, setIsDetecting] = useState(false);
     const [showHearts, setShowHearts] = useState(false);
+    const [isBadgePulsing, setIsBadgePulsing] = useState(false);
+    const prevSuggestedCount = useRef(0);
 
     // Initialise chat + load suggested memory entries
     useEffect(() => {
         if (personaId) {
-            loadOrCreateChat(personaId, chatId);
-
-            // Prune expired suggestions, then load surviving ones
             (async () => {
+                await loadOrCreateChat(personaId, chatId);
+
+                // Init turn counter from persisted chat data
+                const chat = useAppStore.getState().activeChat;
+                if (chat) {
+                    const totalTurns = Math.floor(chat.messages.length / 2);
+                    const lastAt = chat.lastDetectionAt ?? 0;
+                    const turnsSince = Math.max(0, totalTurns - lastAt);
+                    setTurnCount(personaId, turnsSince);
+                }
+
+                // Prune expired suggestions, then load surviving ones
                 const s = await getSettings();
                 await deleteExpiredSuggestedEntries(personaId, s.memorySettings.suggestedEntryExpiryDays);
                 const existing = await getSuggestedPendingEntries(personaId);
@@ -62,12 +74,22 @@ export default function ChatPage() {
                 }
             })();
         }
-    }, [personaId, chatId, loadOrCreateChat]);
+    }, [personaId, chatId, loadOrCreateChat, setTurnCount]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [activeChat?.messages.length, isStreaming]);
+
+    // Pulse badge when new suggestions arrive
+    useEffect(() => {
+        if (suggestedEntries.length > prevSuggestedCount.current && suggestedEntries.length > 0) {
+            setIsBadgePulsing(true);
+            const timer = setTimeout(() => setIsBadgePulsing(false), 1000);
+            return () => clearTimeout(timer);
+        }
+        prevSuggestedCount.current = suggestedEntries.length;
+    }, [suggestedEntries.length]);
 
     // Auto-resize textarea
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -108,8 +130,22 @@ export default function ChatPage() {
         if (!silent) setIsDetecting(true);
         try {
             const recentMessages = msgs.slice(-10);
-            const entries = await detectMemories(recentMessages, personaId, activeChat.id, provider, model);
+
+            // Load existing memory context for cross-detection dedup
+            const meta = await getMemoryMeta(personaId);
+            const acceptedPending = await getAcceptedPendingEntries(personaId);
+            const existingContext = meta ? {
+                indexContent: meta.indexContent,
+                acceptedPending,
+                nsfwEnabled: meta.nsfwEnabled,
+            } : undefined;
+
+            const entries = await detectMemories(recentMessages, personaId, activeChat.id, provider, model, existingContext);
             resetTurnCount(personaId);
+
+            // Persist detection point for turn tracking across reloads
+            const totalTurns = Math.floor(msgs.length / 2);
+            await updateChatLastDetection(activeChat.id, totalTurns);
 
             if (entries.length > 0) {
                 // Always persist to DB first so entries survive navigation
@@ -392,6 +428,28 @@ export default function ChatPage() {
                         {persona.tagline}
                     </div>
                 </div>
+
+                {suggestedEntries.length > 0 && (
+                    <button
+                        onClick={() => navigate(`/persona/${personaId}/memory`)}
+                        style={{
+                            marginLeft: 'auto',
+                            padding: '3px 10px',
+                            borderRadius: 20,
+                            border: `1px solid ${persona.color}55`,
+                            background: `${persona.color}22`,
+                            color: persona.color,
+                            fontSize: 11,
+                            fontFamily: "'Courier New', monospace",
+                            cursor: 'pointer',
+                            animation: isBadgePulsing ? 'memoryPulse 0.8s ease-out' : 'none',
+                            '--pulse-color': `${persona.color}99`,
+                            '--pulse-color-fade': `${persona.color}00`,
+                        } as React.CSSProperties}
+                    >
+                        💾 {suggestedEntries.length}
+                    </button>
+                )}
             </div>
 
             {/* Messages */}

@@ -140,6 +140,13 @@ export async function deleteChat(id: string): Promise<void> {
     await db.delete('chats', id);
 }
 
+export async function updateChatLastDetection(chatId: string, turnCount: number): Promise<void> {
+    const db = await getDB();
+    const chat = await db.get('chats', chatId);
+    if (!chat) return;
+    await db.put('chats', { ...chat, lastDetectionAt: turnCount, updatedAt: Date.now() });
+}
+
 // ─── Personas ─────────────────────────────────────────────────────────────────
 
 export async function getPersonas(): Promise<Persona[]> {

@@ -13,13 +13,15 @@ import { consolidateMemory } from '@/services/memory';
 import type { MemoryMeta, MemoryTopic, MemoryPendingEntry, MemoryType, Chat } from '@/types';
 import { MEMORY_TYPE_EMOJI } from '@/types';
 
+import { countTokens } from '@/services/tokenCount';
+
 const ALL_TYPES: MemoryType[] = ['emotional', 'hard_fact', 'preference', 'event', 'nsfw'];
 
 function estimateTokens(meta: MemoryMeta | null, topics: MemoryTopic[], pending: MemoryPendingEntry[]): number {
     let text = meta?.indexContent ?? '';
     for (const t of topics) text += t.content;
     for (const p of pending) text += p.content;
-    return Math.ceil(text.length / 4);
+    return countTokens(text);
 }
 
 export default function MemoryPage() {
@@ -182,6 +184,15 @@ export default function MemoryPage() {
         await loadData();
     };
 
+    const handleDismissAllSuggested = async () => {
+        if (!personaId || suggested.length === 0) return;
+        if (!window.confirm(`Dismiss all ${suggested.length} unreviewed suggestion${suggested.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+        for (const entry of suggested) {
+            await deletePendingEntry(entry.id);
+        }
+        await loadData();
+    };
+
     const handleDeleteChat = async (chatId: string) => {
         await removeChat(chatId);
         setChats(prev => prev.filter(c => c.id !== chatId));
@@ -232,8 +243,8 @@ export default function MemoryPage() {
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
                     <button
-                        onClick={() => navigate('/')}
-                        style={{ color: 'rgba(255,255,255,0.4)', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                        onClick={() => navigate(-1)}
+                        style={{ color: 'rgba(255,255,255,0.4)', fontSize: 18, background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px', minWidth: 44, minHeight: 44, display: 'flex', alignItems: 'center' }}
                         aria-label="Back"
                     >←</button>
                     <div
@@ -263,7 +274,7 @@ export default function MemoryPage() {
                             marginLeft: 'auto', fontSize: 10, color: 'rgba(255,255,255,0.25)',
                             fontFamily: "'Courier New', monospace", letterSpacing: '0.05em',
                         }}>
-                            ~{tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : tokens} tok
+                            ~{tokens >= 1000 ? `${(tokens / 1000).toFixed(1)}k` : tokens} tok (est.)
                         </span>
                     )}
                 </div>
@@ -308,15 +319,20 @@ export default function MemoryPage() {
                         padding: '10px 14px', marginBottom: 16, borderRadius: 10,
                         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
                     }}>
-                        <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: "'Lora', Georgia, serif" }}>
-                            🔥 Include NSFW in prompt
-                        </span>
+                        <div>
+                            <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', fontFamily: "'Lora', Georgia, serif" }}>
+                                🔥 Include NSFW in {persona.name}'s prompt
+                            </span>
+                            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.25)', marginTop: 2, fontFamily: "'Courier New', monospace" }}>
+                                This setting applies to this persona only.
+                            </div>
+                        </div>
                         <button
                             onClick={handleToggleNsfw}
                             style={{
                                 width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer',
                                 background: meta?.nsfwEnabled ? `${color}88` : 'rgba(255,255,255,0.1)',
-                                position: 'relative', transition: 'background 0.2s',
+                                position: 'relative', transition: 'background 0.2s', flexShrink: 0,
                             }}
                         >
                             <div style={{
@@ -554,6 +570,12 @@ export default function MemoryPage() {
                                         style={{ padding: '3px 8px', borderRadius: 6, border: `1px solid ${color}44`, background: `${color}18`, color, fontSize: 10, fontFamily: "'Courier New', monospace", cursor: 'pointer' }}
                                     >
                                         Accept All
+                                    </button>
+                                    <button
+                                        onClick={handleDismissAllSuggested}
+                                        style={{ padding: '3px 8px', borderRadius: 6, border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(239,68,68,0.08)', color: 'rgba(239,68,68,0.6)', fontSize: 10, fontFamily: "'Courier New', monospace", cursor: 'pointer' }}
+                                    >
+                                        Dismiss All
                                     </button>
                                 </div>
                             </div>

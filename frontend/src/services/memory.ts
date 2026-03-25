@@ -8,12 +8,25 @@ import {
 } from '@/services/db';
 import { buildOpenAIHeaders } from '@/services/api';
 import { proxiedFetch } from '@/services/proxiedFetch';
+import { enqueue } from '@/services/requestQueue';
 import DETECTION_PROMPT from '@/data/prompts/memory-detection.md?raw';
 import CONSOLIDATION_PROMPT from '@/data/prompts/memory-consolidation.md?raw';
 
 // ─── LLM Helper (non-streaming, simple) ──────────────────────────────────────
 
 async function callMemoryWorker(
+    systemPrompt: string,
+    userMessage: string,
+    provider: Provider,
+    model: ModelConfig,
+): Promise<string> {
+    return enqueue(
+        provider.id,
+        () => _callMemoryWorkerInner(systemPrompt, userMessage, provider, model),
+    );
+}
+
+async function _callMemoryWorkerInner(
     systemPrompt: string,
     userMessage: string,
     provider: Provider,
@@ -93,14 +106,45 @@ export async function detectMemories(
     chatId: string,
     provider: Provider,
     model: ModelConfig,
+    existingContext?: {
+        indexContent: string;
+        acceptedPending: MemoryPendingEntry[];
+        nsfwEnabled: boolean;
+    },
 ): Promise<MemoryPendingEntry[]> {
     const conversation = messages
         .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
         .join('\n\n');
 
+    let alreadyKnown = '';
+    if (existingContext) {
+        const parts: string[] = [];
+
+        if (existingContext.indexContent) {
+            parts.push(`## ALREADY KNOWN (summary)\n${existingContext.indexContent}`);
+        }
+
+        const pending = existingContext.nsfwEnabled
+            ? existingContext.acceptedPending
+            : existingContext.acceptedPending.filter(e => e.type !== 'nsfw');
+
+        if (pending.length > 0) {
+            parts.push(
+                '## ALREADY KNOWN (recent, not yet consolidated)\n' +
+                pending.map(e => `- [${e.type}] ${e.content}`).join('\n')
+            );
+        }
+
+        alreadyKnown = parts.join('\n\n');
+    }
+
+    const userMessage = alreadyKnown
+        ? `${alreadyKnown}\n\n## CONVERSATION TO ANALYSE\n${conversation}`
+        : `Conversation:\n${conversation}`;
+
     const raw = await callMemoryWorker(
         DETECTION_PROMPT,
-        `Conversation:\n${conversation}`,
+        userMessage,
         provider,
         model,
     );

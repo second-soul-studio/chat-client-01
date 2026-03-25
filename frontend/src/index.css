@@ -262,6 +262,21 @@ body,
     }
 }
 
+@keyframes memoryPulse {
+
+    0% {
+        box-shadow: 0 0 0 0 var(--pulse-color, rgba(167, 139, 250, 0.6));
+    }
+
+    70% {
+        box-shadow: 0 0 0 8px var(--pulse-color-fade, rgba(167, 139, 250, 0));
+    }
+
+    100% {
+        box-shadow: 0 0 0 0 var(--pulse-color-fade, rgba(167, 139, 250, 0));
+    }
+}
+
 /* ─── Copy Button ────────────────────────────────────────────────────── */
 
 .assistant-bubble:hover .copy-btn,
