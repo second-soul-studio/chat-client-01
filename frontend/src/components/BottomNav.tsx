@@ -10,10 +10,22 @@ export default function BottomNav() {
     const location = useLocation();
     const navigate = useNavigate();
 
+    // Extract personaId from chat routes
+    const chatMatch = location.pathname.match(/^\/chat\/([^/]+)/);
+    const chatPersonaId = chatMatch?.[1];
+
     // Determine active tab — /chat/* counts as home
     const active = location.pathname.startsWith('/chat')
         ? '/'
         : NAV_ITEMS.find(item => location.pathname === item.path)?.path ?? '/';
+
+    const handleNav = (path: string) => {
+        if (path === '/history' && chatPersonaId) {
+            navigate(`/memory/${chatPersonaId}?tab=history`);
+        } else {
+            navigate(path);
+        }
+    };
 
     return (
         <nav
@@ -29,7 +41,7 @@ export default function BottomNav() {
                 return (
                     <button
                         key={item.path}
-                        onClick={() => navigate(item.path)}
+                        onClick={() => handleNav(item.path)}
                         className="flex flex-col items-center gap-1 py-2 px-6 min-w-[44px] min-h-[44px] transition-opacity"
                         style={{ opacity: isActive ? 1 : 0.35 }}
                         aria-label={item.label}

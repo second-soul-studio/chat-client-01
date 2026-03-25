@@ -508,60 +508,67 @@ export default function ChatPage() {
 
                         {/* Thinking toggle — only shown when model supports CoT */}
                         {cotAvailable && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                                 <button
                                     onClick={() => setThinkingEnabled(v => !v)}
                                     title={thinkingEnabled ? 'Thinking on — click to disable' : 'Thinking off — click to enable'}
                                     style={{
-                                        width: 30,
-                                        height: 30,
-                                        borderRadius: 12,
-                                        border: 'none',
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: 14,
+                                        border: thinkingEnabled
+                                            ? `1.5px solid ${persona.color}88`
+                                            : '1.5px solid rgba(255,255,255,0.12)',
                                         background: thinkingEnabled
                                             ? `${persona.color}33`
-                                            : 'transparent',
+                                            : 'rgba(255,255,255,0.06)',
                                         color: thinkingEnabled
                                             ? persona.color
-                                            : 'rgba(255,255,255,0.2)',
+                                            : 'rgba(255,255,255,0.35)',
                                         cursor: 'pointer',
-                                        fontSize: 16,
+                                        fontSize: 18,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                         transition: 'all 0.2s ease',
+                                        boxShadow: thinkingEnabled ? `0 0 12px ${persona.color}44` : 'none',
                                     }}
                                     aria-label="Toggle thinking"
                                     aria-pressed={thinkingEnabled}
                                 >
                                     ✦
                                 </button>
-                                <span style={{ fontSize: 7, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', textTransform: 'uppercase', color: thinkingEnabled ? persona.color : 'rgba(255,255,255,0.2)', transition: 'color 0.2s' }}>think</span>
+                                <span style={{ fontSize: 9, fontWeight: 600, fontFamily: "'Courier New', monospace", letterSpacing: '0.1em', textTransform: 'uppercase', color: thinkingEnabled ? persona.color : 'rgba(255,255,255,0.3)', transition: 'color 0.2s' }}>think</span>
                             </div>
                         )}
 
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flexShrink: 0 }}>
                             <button
                                 onClick={handleSend}
                                 disabled={isStreaming || !input.trim()}
                                 style={{
-                                    width: 30,
-                                    height: 30,
-                                    borderRadius: 12,
-                                    border: 'none',
-                                    background: input.trim() && !isStreaming ? persona.color : 'rgba(255,255,255,0.08)',
-                                    color: input.trim() && !isStreaming ? '#000000cc' : 'rgba(255,255,255,0.2)',
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 14,
+                                    border: input.trim() && !isStreaming
+                                        ? `1.5px solid ${persona.color}88`
+                                        : '1.5px solid rgba(255,255,255,0.12)',
+                                    background: input.trim() && !isStreaming ? persona.color : 'rgba(255,255,255,0.06)',
+                                    color: input.trim() && !isStreaming ? '#000000cc' : 'rgba(255,255,255,0.35)',
                                     cursor: input.trim() && !isStreaming ? 'pointer' : 'not-allowed',
-                                    fontSize: 16,
+                                    fontSize: 18,
+                                    fontWeight: 700,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     transition: 'all 0.2s ease',
+                                    boxShadow: input.trim() && !isStreaming ? `0 0 12px ${persona.color}44` : 'none',
                                 }}
                                 aria-label="Send"
                             >
                                 {isStreaming ? <TypingIndicator color={persona.color} /> : '↑'}
                             </button>
-                            <span style={{ fontSize: 7, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.2)' }}>send</span>
+                            <span style={{ fontSize: 9, fontWeight: 600, fontFamily: "'Courier New', monospace", letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)' }}>send</span>
                         </div>
                     </div>
                     {/* Tool pills — shown below input when tools are available */}
@@ -573,20 +580,22 @@ export default function ChatPage() {
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: 6,
-                                    padding: '4px 12px',
+                                    padding: '7px 16px',
                                     borderRadius: 20,
-                                    border: `1px solid ${searchEnabled ? persona.color + '66' : 'rgba(255,255,255,0.1)'}`,
-                                    background: searchEnabled ? `${persona.color}22` : 'transparent',
-                                    color: searchEnabled ? persona.color : 'rgba(255,255,255,0.3)',
-                                    fontSize: 11,
+                                    border: `1.5px solid ${searchEnabled ? persona.color + '88' : 'rgba(255,255,255,0.15)'}`,
+                                    background: searchEnabled ? `${persona.color}28` : 'rgba(255,255,255,0.06)',
+                                    color: searchEnabled ? persona.color : 'rgba(255,255,255,0.4)',
+                                    fontSize: 12,
+                                    fontWeight: 600,
                                     fontFamily: "'Courier New', monospace",
                                     letterSpacing: '0.08em',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
+                                    boxShadow: searchEnabled ? `0 0 10px ${persona.color}33` : 'none',
                                 }}
                                 aria-pressed={searchEnabled}
                             >
-                                <span style={{ fontSize: 12 }}>🔍</span>
+                                <span style={{ fontSize: 13 }}>🔍</span>
                                 Web Search
                             </button>
                         </div>

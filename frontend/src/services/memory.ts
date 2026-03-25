@@ -8,46 +8,8 @@ import {
 } from '@/services/db';
 import { buildOpenAIHeaders } from '@/services/api';
 import { proxiedFetch } from '@/services/proxiedFetch';
-
-// ─── Prompts ──────────────────────────────────────────────────────────────────
-
-const DETECTION_PROMPT = `Extract noteworthy facts about the user from this conversation.
-
-Categories: 💫 emotional, 📌 hard_fact, ⚙️ preference, 📅 event, 🔥 nsfw
-
-Rules:
-- Only genuinely new, useful information
-- Be precise, no filler
-- Skip anything trivial or already obvious
-- Empty array if nothing worth remembering
-
-Output ONLY a JSON array, no markdown fences:
-[{"type": "hard_fact", "content": "..."}, ...]`;
-
-const CONSOLIDATION_PROMPT = `Rebuild this persona's memory about the user.
-
-You receive the current memory index, topic files, and new observations.
-
-Your job:
-- Merge new observations into existing topics
-- Deduplicate — don't repeat what's already captured
-- Create new topics if a theme emerges that doesn't fit existing ones
-- Drop or shorten information that has become irrelevant
-- Each topic: 5–8 concise sentences max
-- Do NOT invent anything not present in the source material
-- If NSFW content exists, keep it in relevant topics naturally
-
-Output format (strict — parsed client-side):
-
-## INDEX
-- slug: One-line summary
-- slug: One-line summary
-
-## TOPIC: slug
-Content here...
-
-## TOPIC: slug
-Content here...`;
+import DETECTION_PROMPT from '@/data/prompts/memory-detection.md?raw';
+import CONSOLIDATION_PROMPT from '@/data/prompts/memory-consolidation.md?raw';
 
 // ─── LLM Helper (non-streaming, simple) ──────────────────────────────────────
 
