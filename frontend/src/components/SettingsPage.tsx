@@ -199,6 +199,22 @@ export default function SettingsPage() {
                                 : 'Enable auto-consolidate to use this threshold.'}
                         </p>
                     </div>
+
+                    {/* Suggested Entry Expiry */}
+                    <div>
+                        <label style={labelStyle}>Suggested Entry Expiry</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <input
+                                type="range"
+                                min={3} max={30} step={1}
+                                value={settings.memorySettings.suggestedEntryExpiryDays}
+                                onChange={e => updateMemory({ suggestedEntryExpiryDays: Number(e.target.value) })}
+                                style={{ flex: 1, accentColor: '#a78bfa' }}
+                            />
+                            <span style={valueStyle}>{settings.memorySettings.suggestedEntryExpiryDays} days</span>
+                        </div>
+                        <p style={hintStyle}>Unreviewed suggestions are automatically deleted after this many days.</p>
+                    </div>
                 </div>
             )}
         </div>

@@ -7,7 +7,7 @@ import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
 import MemorySuggestion from './MemorySuggestion';
 import FloatingHearts from './FloatingHearts';
 import { detectMemories, shouldRunDetection, consolidateMemory } from '@/services/memory';
-import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries } from '@/services/db';
+import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries, getSuggestedPendingEntries, deleteExpiredSuggestedEntries, getSettings } from '@/services/db';
 import type { Message, MemoryPendingEntry } from '@/types';
 
 export default function ChatPage() {
@@ -47,10 +47,20 @@ export default function ChatPage() {
     const [isDetecting, setIsDetecting] = useState(false);
     const [showHearts, setShowHearts] = useState(false);
 
-    // Initialise chat
+    // Initialise chat + load suggested memory entries
     useEffect(() => {
         if (personaId) {
             loadOrCreateChat(personaId, chatId);
+
+            // Prune expired suggestions, then load surviving ones
+            (async () => {
+                const s = await getSettings();
+                await deleteExpiredSuggestedEntries(personaId, s.memorySettings.suggestedEntryExpiryDays);
+                const existing = await getSuggestedPendingEntries(personaId);
+                if (existing.length > 0) {
+                    setSuggestedEntries(existing);
+                }
+            })();
         }
     }, [personaId, chatId, loadOrCreateChat]);
 

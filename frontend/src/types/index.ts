@@ -124,4 +124,5 @@ export interface MemorySettings {
     autoConsolidate: boolean;
     consolidationThreshold: number;   // 5–25, default 10
     detectionInterval: number;        // 3–10 turns, default 5
+    suggestedEntryExpiryDays: number; // 3–30, default 7
 }

@@ -7,6 +7,7 @@ import {
     getMemoryTopics, saveMemoryTopic, deleteMemoryTopic,
     getAcceptedPendingEntries, getSuggestedPendingEntries,
     savePendingEntry, deletePendingEntry,
+    deleteExpiredSuggestedEntries, getSettings,
 } from '@/services/db';
 import { consolidateMemory } from '@/services/memory';
 import type { MemoryMeta, MemoryTopic, MemoryPendingEntry, MemoryType, Chat } from '@/types';
@@ -52,7 +53,11 @@ export default function MemoryPage() {
 
     const loadData = useCallback(async () => {
         if (!personaId) return;
-        const [m, t, p, s] = await Promise.all([
+        // Prune expired suggested entries before loading
+        const s = await getSettings();
+        await deleteExpiredSuggestedEntries(personaId, s.memorySettings.suggestedEntryExpiryDays);
+
+        const [m, t, p, suggested_] = await Promise.all([
             getMemoryMeta(personaId),
             getMemoryTopics(personaId),
             getAcceptedPendingEntries(personaId),
@@ -61,7 +66,7 @@ export default function MemoryPage() {
         setMeta(m ?? null);
         setTopics(t);
         setPending(p);
-        setSuggested(s);
+        setSuggested(suggested_);
     }, [personaId]);
 
     useEffect(() => { loadData(); }, [loadData]);

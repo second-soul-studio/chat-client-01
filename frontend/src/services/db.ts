@@ -168,6 +168,7 @@ const DEFAULT_SETTINGS: AppSettings = {
         autoConsolidate: true,
         consolidationThreshold: 10,
         detectionInterval: 5,
+        suggestedEntryExpiryDays: 7,
     },
 };
 
@@ -282,6 +283,22 @@ export async function getAcceptedPendingEntries(personaId: string): Promise<Memo
 export async function getSuggestedPendingEntries(personaId: string): Promise<MemoryPendingEntry[]> {
     const all = await getPendingEntries(personaId);
     return all.filter(e => e.status === 'suggested');
+}
+
+export async function deleteExpiredSuggestedEntries(
+    personaId: string,
+    expiryDays: number,
+): Promise<void> {
+    const cutoff = Date.now() - expiryDays * 86_400_000;
+    const all = await getPendingEntries(personaId);
+    const expired = all.filter(e => e.status === 'suggested' && e.extractedAt < cutoff);
+    if (expired.length === 0) return;
+    const db = await getDB();
+    const tx = db.transaction('memoryPending', 'readwrite');
+    for (const e of expired) {
+        await tx.store.delete(e.id);
+    }
+    await tx.done;
 }
 
 export async function savePendingEntry(entry: MemoryPendingEntry): Promise<void> {
