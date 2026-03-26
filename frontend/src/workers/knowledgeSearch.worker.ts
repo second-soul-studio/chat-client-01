@@ -17,5 +17,5 @@ self.onmessage = (event: MessageEvent<SearchRequest>) => {
     const results = strategy.search(queryEmbedding, chunks, topK);
     const response: SearchResponse = { results };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (self as any).postMessage(response, [queryEmbedding.buffer]);
+    (self as any).postMessage(response);
 };
