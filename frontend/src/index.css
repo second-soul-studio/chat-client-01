@@ -277,6 +277,29 @@ body,
     }
 }
 
+@keyframes bubbleRise {
+
+    0% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+
+    15% {
+        opacity: 1;
+        transform: translateY(-6px);
+    }
+
+    85% {
+        opacity: 1;
+        transform: translateY(-38px);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(-44px);
+    }
+}
+
 /* ─── Copy Button ────────────────────────────────────────────────────── */
 
 .assistant-bubble:hover .copy-btn,
