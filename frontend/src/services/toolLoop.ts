@@ -1,6 +1,6 @@
 import type { Message, AppSettings, Persona, ToolCallRecord, ToolConfig } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
-import { sendMessage, buildOpenAIHeaders, readStream, extractThinkingFromText, buildContextWindow } from './api';
+import { sendMessage, buildOpenAIHeaders, readStream, extractThinkingFromText, buildContextWindow, retry502 } from './api';
 import { proxiedFetch } from './proxiedFetch';
 import { getToolByName, getAllTools } from './tools/registry';
 import type { ToolDefinition } from './tools/types';
@@ -93,6 +93,7 @@ export interface ToolLoopOptions {
     onThinkingChunk?: (thinking: string) => void;
     onToolCall?: (record: ToolCallRecord) => void;
     onToolResult?: (record: ToolCallRecord) => void;
+    onRetry?: (attempt: number, max: number) => void;
 }
 
 export interface ToolLoopResult {
@@ -123,6 +124,7 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
             thinkingEnabled: opts.thinkingEnabled,
             onChunk: opts.onChunk,
             onThinkingChunk: opts.onThinkingChunk,
+            onRetry: opts.onRetry,
         });
         return { ...result, toolCalls: [] };
     }
@@ -242,18 +244,21 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
     }
 
     // Final streaming turn — no tools, get the actual response
-    const finalResponse = await proxiedFetch(`${baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { ...buildOpenAIHeaders(provider.apiKey), ...extraHeaders },
-        body: JSON.stringify({
-            model: effectiveSlug,
-            messages: context,
-            temperature,
-            top_p: topP,
-            max_tokens: maxOutputTokens,
-            stream: !!(opts.onChunk || opts.onThinkingChunk),
+    const finalResponse = await retry502(
+        () => proxiedFetch(`${baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: { ...buildOpenAIHeaders(provider.apiKey), ...extraHeaders },
+            body: JSON.stringify({
+                model: effectiveSlug,
+                messages: context,
+                temperature,
+                top_p: topP,
+                max_tokens: maxOutputTokens,
+                stream: !!(opts.onChunk || opts.onThinkingChunk),
+            }),
         }),
-    });
+        opts.onRetry,
+    );
 
     if (!finalResponse.ok) {
         const error = await finalResponse.text();

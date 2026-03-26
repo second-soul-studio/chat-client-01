@@ -57,6 +57,8 @@ export default function ChatPage() {
     const [isBadgePulsing, setIsBadgePulsing] = useState(false);
     const prevSuggestedCount = useRef(0);
 
+    const [retryInfo, setRetryInfo] = useState<{ attempt: number; max: number } | null>(null);
+
     // Memory sidebar state
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const sidebarOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -349,6 +351,7 @@ export default function ChatPage() {
                 onToolResult: (record) => {
                     updatePendingToolCall(record);
                 },
+                onRetry: (attempt, max) => setRetryInfo({ attempt, max }),
             });
 
             if (result.toolCalls.length > 0) {
@@ -374,6 +377,7 @@ export default function ChatPage() {
         } finally {
             clearPendingToolCalls();
             setIsStreaming(false);
+            setRetryInfo(null);
         }
     }, [persona, personaId, settings, modelConfigs, providers, addMessage, setIsStreaming, updateLastAssistantMessage, updateStreamingThinking, finaliseMessage, thinkingEnabled, searchEnabled, toolConfigs, addPendingToolCall, updatePendingToolCall, clearPendingToolCalls, updateLastToolCalls, incrementTurnCount, triggerDetection]);
 
@@ -589,6 +593,7 @@ export default function ChatPage() {
                                     thinkingBlockOpen={thinkingBlockOpen}
                                     onThinkingToggle={setThinkingBlockOpen}
                                     pendingToolCalls={isStreaming && isLastAssistant ? pendingToolCalls : undefined}
+                                    retryInfo={isStreaming && isLastAssistant ? retryInfo ?? undefined : undefined}
                                 />
                             );
                         }
