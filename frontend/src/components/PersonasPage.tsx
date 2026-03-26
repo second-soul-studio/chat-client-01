@@ -103,7 +103,7 @@ export default function PersonasPage() {
                         fontWeight: 400,
                     }}
                 >
-                    Second Soul
+                    Chat Client 01
                 </h1>
                 <p
                     style={{
