@@ -36,6 +36,25 @@ export function buildContextWindow(messages: Message[], maxTokens: number, syste
     return result;
 }
 
+// ─── Retry Utility ────────────────────────────────────────────────────────────
+
+export async function retry502<T extends { status: number }>(
+    fn: () => Promise<T>,
+    onRetry?: (attempt: number, max: number) => void,
+    maxAttempts = 5,
+    delayMs = 3000,
+): Promise<T> {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const response = await fn();
+        if (response.status !== 502) return response;
+        if (attempt === maxAttempts) throw new Error(`502 after ${maxAttempts} attempts`);
+        onRetry?.(attempt + 1, maxAttempts);
+        await new Promise(r => setTimeout(r, delayMs));
+    }
+    // unreachable
+    throw new Error('retry502: unreachable');
+}
+
 // ─── CoT Extraction ───────────────────────────────────────────────────────────
 
 export function extractThinkingFromText(raw: string): { thinking?: string; content: string } {
