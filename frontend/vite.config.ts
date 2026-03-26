@@ -29,6 +29,7 @@ export default defineConfig({
             },
             workbox: {
                 globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2,wasm}'],
+                maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // tiktoken WASM is ~5.6 MB
             },
         }),
     ],

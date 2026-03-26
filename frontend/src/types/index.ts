@@ -21,6 +21,7 @@ export interface Persona {
     };
     order?: number;
     memoryEnabled?: boolean;        // default true — set false to disable memory for this persona
+    knowledgeCollectionIds?: string[];   // assigned Knowledge Collections
 }
 
 export interface ToolCallRecord {
@@ -60,6 +61,7 @@ export interface AppSettings {
     defaultModelId: string | null;
     theme: 'dark';
     memorySettings: MemorySettings;
+    knowledge: KnowledgeSettings;
 }
 
 export interface BraveSearchSettings {
@@ -126,4 +128,63 @@ export interface MemorySettings {
     consolidationThreshold: number;   // 5–25, default 10
     detectionInterval: number;        // 3–10 turns, default 5
     suggestedEntryExpiryDays: number; // 3–30, default 7
+}
+
+// ─── Knowledge / RAG System ───────────────────────────────────────────────────
+
+export const DEFAULT_RAG_PROMPT_TEMPLATE = `Use the following context to answer. Cite sources when relevant.
+<context>
+{{chunks}}
+</context>`;
+
+export interface KnowledgeCollection {
+    id: string;                        // UUID
+    name: string;
+    description?: string;
+    personaIds: string[];              // assigned Personas
+    embeddingProviderId: string;
+    embeddingModelSlug: string;
+    embeddingDimension: number;
+    chunkSize: number;                 // default: 1000 (tokens)
+    chunkOverlap: number;              // default: 100 (tokens)
+    createdAt: Date;
+    updatedAt: Date;
+}
+
+export interface KnowledgeDocument {
+    id: string;                        // UUID
+    collectionId: string;              // Index
+    name: string;
+    content: string;                   // original text
+    chunkCount: number;
+    status: 'pending' | 'indexed' | 'error';
+    errorMessage?: string;
+    createdAt: Date;
+}
+
+export interface KnowledgeChunk {
+    id: string;                        // UUID
+    documentId: string;
+    collectionId: string;              // Index (for fast collection-scoped search)
+    content: string;                   // chunk text
+    embedding: Float32Array;
+    startOffset: number;               // byte offset in original document
+    endOffset: number;
+}
+
+export interface KnowledgeSettings {
+    defaultEmbeddingProviderId?: string;
+    defaultEmbeddingModelSlug?: string;
+    defaultChunkSize: number;          // default: 1000
+    defaultChunkOverlap: number;       // default: 100
+    knowledgeContextTokenBudget: number; // default: 3000
+    topK: number;                      // default: 5 (chunks per query)
+    ragPromptTemplate: string;         // configurable
+}
+
+export interface ScoredChunk {
+    chunk: KnowledgeChunk;
+    score: number;
+    documentName: string;
+    collectionName: string;
 }

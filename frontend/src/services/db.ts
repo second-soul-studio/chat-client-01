@@ -1,5 +1,6 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import type { Chat, Persona, AppSettings, ToolConfig, MemoryPendingEntry, MemoryTopic, MemoryMeta } from '@/types';
+import type { Chat, Persona, AppSettings, ToolConfig, MemoryPendingEntry, MemoryTopic, MemoryMeta, KnowledgeCollection, KnowledgeDocument, KnowledgeChunk, KnowledgeSettings } from '@/types';
+import { DEFAULT_RAG_PROMPT_TEMPLATE } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import type { FetchedModel } from '@/services/modelMeta/types';
 import defaultProviders from '@/data/providers.default.json';
@@ -52,6 +53,22 @@ interface SecondSoulDB extends DBSchema {
         key: string;
         value: MemoryMeta;
     };
+    knowledgeCollections: {
+        key: string;
+        value: KnowledgeCollection;
+        indexes: { 'by-updated': Date };
+    };
+    knowledgeDocuments: {
+        key: string;
+        value: KnowledgeDocument;
+        indexes: { 'by-collection': string };
+    };
+    knowledgeChunks: {
+        key: string;
+        // Stored with embedding as ArrayBuffer; Float32Array reconstructed on read
+        value: Omit<KnowledgeChunk, 'embedding'> & { embedding: ArrayBuffer };
+        indexes: { 'by-collection': string; 'by-document': string };
+    };
 }
 
 let dbInstance: IDBPDatabase<SecondSoulDB> | null = null;
@@ -59,7 +76,7 @@ let dbInstance: IDBPDatabase<SecondSoulDB> | null = null;
 export async function getDB(): Promise<IDBPDatabase<SecondSoulDB>> {
     if (dbInstance) return dbInstance;
 
-    dbInstance = await openDB<SecondSoulDB>('second-soul', 4, {
+    dbInstance = await openDB<SecondSoulDB>('second-soul', 5, {
         upgrade(db, oldVersion) {
             if (oldVersion < 1) {
                 const chatStore = db.createObjectStore('chats', { keyPath: 'id' });
@@ -88,6 +105,17 @@ export async function getDB(): Promise<IDBPDatabase<SecondSoulDB>> {
                 topicStore.createIndex('by-persona', 'personaId');
 
                 db.createObjectStore('memoryMeta', { keyPath: 'personaId' });
+            }
+            if (oldVersion < 5) {
+                const collectionsStore = db.createObjectStore('knowledgeCollections', { keyPath: 'id' });
+                collectionsStore.createIndex('by-updated', 'updatedAt');
+
+                const documentsStore = db.createObjectStore('knowledgeDocuments', { keyPath: 'id' });
+                documentsStore.createIndex('by-collection', 'collectionId');
+
+                const chunksStore = db.createObjectStore('knowledgeChunks', { keyPath: 'id' });
+                chunksStore.createIndex('by-collection', 'collectionId');
+                chunksStore.createIndex('by-document', 'documentId');
             }
         },
     });
@@ -166,6 +194,14 @@ export async function deletePersona(id: string): Promise<void> {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
+const DEFAULT_KNOWLEDGE_SETTINGS: KnowledgeSettings = {
+    defaultChunkSize: 1000,
+    defaultChunkOverlap: 100,
+    knowledgeContextTokenBudget: 3000,
+    topK: 5,
+    ragPromptTemplate: DEFAULT_RAG_PROMPT_TEMPLATE,
+};
+
 const DEFAULT_SETTINGS: AppSettings = {
     globalSystemPrompt: '',
     defaultModelId: 'nano-gpt/claude-sonnet-4-6',
@@ -177,19 +213,22 @@ const DEFAULT_SETTINGS: AppSettings = {
         detectionInterval: 5,
         suggestedEntryExpiryDays: 7,
     },
+    knowledge: DEFAULT_KNOWLEDGE_SETTINGS,
 };
 
 export async function getSettings(): Promise<AppSettings> {
     const db = await getDB();
     const stored = await db.get('settings', 'main');
     if (!stored) return DEFAULT_SETTINGS;
-    // Merge with defaults so existing users get new memorySettings fields
+    // Merge with defaults so existing users get new fields on upgrade
     const storedAny = stored as unknown as Record<string, unknown>;
     const storedMemory = (storedAny.memorySettings ?? {}) as Partial<AppSettings['memorySettings']>;
+    const storedKnowledge = (storedAny.knowledge ?? {}) as Partial<AppSettings['knowledge']>;
     return {
         ...DEFAULT_SETTINGS,
         ...stored,
         memorySettings: { ...DEFAULT_SETTINGS.memorySettings, ...storedMemory },
+        knowledge: { ...DEFAULT_SETTINGS.knowledge, ...storedKnowledge },
     };
 }
 
@@ -374,4 +413,108 @@ export async function deleteAllMemoryForPersona(personaId: string): Promise<void
     await tx2.done;
 
     await db.delete('memoryMeta', personaId);
+}
+
+// ─── Knowledge: Collections ───────────────────────────────────────────────────
+
+export async function getCollections(): Promise<KnowledgeCollection[]> {
+    const db = await getDB();
+    return db.getAll('knowledgeCollections');
+}
+
+export async function getCollection(id: string): Promise<KnowledgeCollection | undefined> {
+    const db = await getDB();
+    return db.get('knowledgeCollections', id);
+}
+
+export async function saveCollection(c: KnowledgeCollection): Promise<void> {
+    const db = await getDB();
+    await db.put('knowledgeCollections', c);
+}
+
+export async function deleteCollection(id: string): Promise<void> {
+    const db = await getDB();
+    await db.delete('knowledgeCollections', id);
+}
+
+// ─── Knowledge: Documents ─────────────────────────────────────────────────────
+
+export async function getDocumentsByCollection(collectionId: string): Promise<KnowledgeDocument[]> {
+    const db = await getDB();
+    return db.getAllFromIndex('knowledgeDocuments', 'by-collection', collectionId);
+}
+
+export async function getDocument(id: string): Promise<KnowledgeDocument | undefined> {
+    const db = await getDB();
+    return db.get('knowledgeDocuments', id);
+}
+
+export async function saveDocument(d: KnowledgeDocument): Promise<void> {
+    const db = await getDB();
+    await db.put('knowledgeDocuments', d);
+}
+
+export async function deleteDocument(id: string): Promise<void> {
+    const db = await getDB();
+    await db.delete('knowledgeDocuments', id);
+}
+
+export async function deleteDocumentsByCollection(collectionId: string): Promise<void> {
+    const docs = await getDocumentsByCollection(collectionId);
+    if (docs.length === 0) return;
+    const db = await getDB();
+    const tx = db.transaction('knowledgeDocuments', 'readwrite');
+    for (const d of docs) await tx.store.delete(d.id);
+    await tx.done;
+}
+
+// ─── Knowledge: Chunks ────────────────────────────────────────────────────────
+// Float32Array is serialised to ArrayBuffer on write and reconstructed on read.
+
+function serialiseChunk(chunk: KnowledgeChunk): Omit<KnowledgeChunk, 'embedding'> & { embedding: ArrayBuffer } {
+    return { ...chunk, embedding: chunk.embedding.buffer };
+}
+
+function deserialiseChunk(raw: Omit<KnowledgeChunk, 'embedding'> & { embedding: ArrayBuffer }): KnowledgeChunk {
+    return { ...raw, embedding: new Float32Array(raw.embedding) };
+}
+
+export async function getChunksByCollection(collectionId: string): Promise<KnowledgeChunk[]> {
+    const db = await getDB();
+    const raw = await db.getAllFromIndex('knowledgeChunks', 'by-collection', collectionId);
+    return raw.map(deserialiseChunk);
+}
+
+export async function getChunksByDocument(documentId: string): Promise<KnowledgeChunk[]> {
+    const db = await getDB();
+    const raw = await db.getAllFromIndex('knowledgeChunks', 'by-document', documentId);
+    return raw.map(deserialiseChunk);
+}
+
+export async function saveChunks(chunks: KnowledgeChunk[]): Promise<void> {
+    if (chunks.length === 0) return;
+    const db = await getDB();
+    const tx = db.transaction('knowledgeChunks', 'readwrite');
+    for (const chunk of chunks) {
+        await tx.store.put(serialiseChunk(chunk));
+    }
+    await tx.done;
+}
+
+export async function deleteChunksByDocument(documentId: string): Promise<void> {
+    const db = await getDB();
+    const raw = await db.getAllFromIndex('knowledgeChunks', 'by-document', documentId);
+    if (raw.length === 0) return;
+    const tx = db.transaction('knowledgeChunks', 'readwrite');
+    for (const c of raw) await tx.store.delete(c.id);
+    await tx.done;
+}
+
+export async function deleteChunksByCollection(collectionId: string): Promise<void> {
+    const db = await getDB();
+    const raw = await db.getAllFromIndex('knowledgeChunks', 'by-collection', collectionId);
+    if (raw.length === 0) return;
+    const tx = db.transaction('knowledgeChunks', 'readwrite');
+    for (const c of raw) await tx.store.delete(c.id);
+    await tx.done;
 }

@@ -12,6 +12,8 @@ export interface Provider {
     enabled: boolean;
     createdAt: number;
     metaFetcherKey?: string;        // key into the ModelMetaFetcher registry
+    embeddingModelSlug?: string;
+    embeddingDimension?: number;
 }
 
 export interface ModelConfig {
