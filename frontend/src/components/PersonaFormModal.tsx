@@ -54,6 +54,7 @@ const DEFAULT_FORM = {
     thinkingEnabled: false,
     memoryEnabled: true,
     modelId: null as string | null,
+    knowledgeCollectionIds: [] as string[],
 };
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -65,7 +66,7 @@ interface PersonaFormModalProps {
 }
 
 export default function PersonaFormModal({ persona, onClose }: PersonaFormModalProps) {
-    const { addPersona, updatePersona } = useAppStore();
+    const { addPersona, updatePersona, collections } = useAppStore();
 
     const [form, setForm] = useState(() => {
         if (persona) {
@@ -79,6 +80,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 thinkingEnabled: persona.thinkingEnabled,
                 memoryEnabled: persona.memoryEnabled !== false,
                 modelId: persona.modelId,
+                knowledgeCollectionIds: persona.knowledgeCollectionIds ?? [],
             };
         }
         return { ...DEFAULT_FORM };
@@ -104,6 +106,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 memoryEnabled: form.memoryEnabled,
                 avatarUrl: null,
                 modelId: form.modelId,
+                knowledgeCollectionIds: form.knowledgeCollectionIds,
             };
             if (persona) {
                 await updatePersona({ ...persona, ...data });
@@ -275,6 +278,83 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                             onChange={v => setForm(f => ({ ...f, memoryEnabled: v }))}
                         />
                     </div>
+
+                    <SectionHeader label="Knowledge" />
+
+                    {collections.length === 0 ? (
+                        <div style={{
+                            padding: '12px 14px',
+                            borderRadius: 10,
+                            border: '1px solid rgba(255,255,255,0.06)',
+                            background: 'rgba(255,255,255,0.02)',
+                            fontSize: 12,
+                            color: 'rgba(255,255,255,0.3)',
+                            fontStyle: 'italic',
+                            marginBottom: 16,
+                        }}>
+                            No collections yet — create one in the Knowledge section.
+                        </div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+                            {collections.map(c => {
+                                const checked = form.knowledgeCollectionIds.includes(c.id);
+                                return (
+                                    <div
+                                        key={c.id}
+                                        onClick={() => setForm(f => ({
+                                            ...f,
+                                            knowledgeCollectionIds: checked
+                                                ? f.knowledgeCollectionIds.filter(id => id !== c.id)
+                                                : [...f.knowledgeCollectionIds, c.id],
+                                        }))}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 12,
+                                            padding: '10px 12px',
+                                            borderRadius: 10,
+                                            border: checked
+                                                ? `1px solid ${palette.color}40`
+                                                : '1px solid rgba(255,255,255,0.07)',
+                                            background: checked ? `${palette.color}0d` : 'rgba(255,255,255,0.03)',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.15s ease',
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: 16,
+                                            height: 16,
+                                            borderRadius: 4,
+                                            border: checked ? `2px solid ${palette.color}` : '2px solid rgba(255,255,255,0.2)',
+                                            background: checked ? palette.color : 'transparent',
+                                            flexShrink: 0,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.15s ease',
+                                        }}>
+                                            {checked && (
+                                                <span style={{ color: '#07050c', fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>
+                                            )}
+                                        </div>
+                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                            <div style={{ fontSize: 13, color: checked ? '#fff' : 'rgba(255,255,255,0.75)' }}>
+                                                {c.name}
+                                            </div>
+                                            <div style={{
+                                                fontSize: 10,
+                                                color: 'rgba(255,255,255,0.25)',
+                                                fontFamily: "'Courier New', monospace",
+                                                marginTop: 2,
+                                            }}>
+                                                {c.embeddingModelSlug}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
 
                     <SectionHeader label="Appearance" />
 

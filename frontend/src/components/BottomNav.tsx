@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router';
 const NAV_ITEMS = [
     { path: '/', icon: '✦', label: 'Home' },
     { path: '/history', icon: '◎', label: 'History' },
+    { path: '/knowledge', icon: '◈', label: 'Knowledge' },
     { path: '/settings', icon: '⟡', label: 'Settings' },
 ] as const;
 

@@ -2,17 +2,30 @@ import { useState } from 'react';
 import { useAppStore } from '@/stores/appStore';
 import ProviderManager from './ProviderManager';
 import ToolsSettings from './ToolsSettings';
-import type { AppSettings, MemorySettings } from '@/types';
+import type { AppSettings, KnowledgeSettings, MemorySettings } from '@/types';
+import { DEFAULT_KNOWLEDGE_SETTINGS } from '@/services/db';
 
 export default function SettingsPage() {
     const { settings, setSettings, modelConfigs, providers } = useAppStore();
-    const [activeTab, setActiveTab] = useState<'api' | 'global' | 'tools' | 'memory'>('api');
+    const [activeTab, setActiveTab] = useState<'api' | 'global' | 'tools' | 'memory' | 'knowledge'>('api');
 
     if (!settings) return null;
 
     const handleGlobalPromptChange = (value: string) => {
         const updated: AppSettings = { ...settings, globalSystemPrompt: value };
         setSettings(updated);
+    };
+
+    const updateKnowledge = (patch: Partial<KnowledgeSettings>) => {
+        const updated: AppSettings = {
+            ...settings,
+            knowledge: { ...settings.knowledge, ...patch },
+        };
+        setSettings(updated);
+    };
+
+    const resetKnowledgeDefaults = () => {
+        setSettings({ ...settings, knowledge: { ...DEFAULT_KNOWLEDGE_SETTINGS } });
     };
 
     const updateMemory = (patch: Partial<MemorySettings>) => {
@@ -34,6 +47,7 @@ export default function SettingsPage() {
         { id: 'global' as const, label: 'Global' },
         { id: 'tools' as const, label: 'Tools' },
         { id: 'memory' as const, label: 'Memory' },
+        { id: 'knowledge' as const, label: 'Knowledge' },
     ];
 
     return (
@@ -105,6 +119,180 @@ export default function SettingsPage() {
             )}
 
             {activeTab === 'tools' && <ToolsSettings />}
+
+            {activeTab === 'knowledge' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                    {/* Default Embedding Provider */}
+                    <div>
+                        <label style={labelStyle}>Default Embedding Provider</label>
+                        <select
+                            value={settings.knowledge.defaultEmbeddingProviderId ?? ''}
+                            onChange={e => updateKnowledge({ defaultEmbeddingProviderId: e.target.value || undefined })}
+                            style={{
+                                width: '100%', background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                                padding: '10px 12px', color: '#e8e0d4', fontSize: 13,
+                                fontFamily: "'Lora', Georgia, serif", outline: 'none',
+                                appearance: 'none', cursor: 'pointer',
+                            }}
+                        >
+                            <option value="" style={{ background: '#1a1520' }}>— none —</option>
+                            {providerGroups.map(g => (
+                                <option key={g.provider.id} value={g.provider.id} style={{ background: '#1a1520' }}>
+                                    {g.provider.name}
+                                </option>
+                            ))}
+                        </select>
+                        <p style={hintStyle}>Provider used when creating new collections.</p>
+                    </div>
+
+                    {/* Default Embedding Model */}
+                    <div>
+                        <label style={labelStyle}>Default Embedding Model</label>
+                        <input
+                            type="text"
+                            value={settings.knowledge.defaultEmbeddingModelSlug ?? ''}
+                            onChange={e => updateKnowledge({ defaultEmbeddingModelSlug: e.target.value || undefined })}
+                            placeholder="e.g. text-embedding-3-small"
+                            style={{
+                                width: '100%', background: 'rgba(255,255,255,0.04)',
+                                border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                                padding: '10px 12px', color: '#e8e0d4', fontSize: 13,
+                                outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+                            }}
+                        />
+                        <p style={hintStyle}>Model slug used for embedding documents.</p>
+                    </div>
+
+                    {/* Default Chunk Size */}
+                    <div>
+                        <label style={labelStyle}>Default Chunk Size</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <input
+                                type="number"
+                                min={100} max={8000} step={50}
+                                value={settings.knowledge.defaultChunkSize}
+                                onChange={e => updateKnowledge({ defaultChunkSize: Number(e.target.value) })}
+                                style={{
+                                    flex: 1, background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                                    padding: '10px 12px', color: '#e8e0d4', fontSize: 13,
+                                    outline: 'none', fontFamily: 'inherit',
+                                }}
+                            />
+                            <span style={valueStyle}>tokens</span>
+                        </div>
+                        <p style={hintStyle}>Pre-fills when creating a new collection.</p>
+                    </div>
+
+                    {/* Default Chunk Overlap */}
+                    <div>
+                        <label style={labelStyle}>Default Chunk Overlap</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <input
+                                type="number"
+                                min={0} max={2000} step={10}
+                                value={settings.knowledge.defaultChunkOverlap}
+                                onChange={e => updateKnowledge({ defaultChunkOverlap: Number(e.target.value) })}
+                                style={{
+                                    flex: 1, background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                                    padding: '10px 12px', color: '#e8e0d4', fontSize: 13,
+                                    outline: 'none', fontFamily: 'inherit',
+                                }}
+                            />
+                            <span style={valueStyle}>tokens</span>
+                        </div>
+                        <p style={hintStyle}>Overlap between adjacent chunks to preserve context at boundaries.</p>
+                    </div>
+
+                    {/* Knowledge Context Token Budget */}
+                    <div>
+                        <label style={labelStyle}>Knowledge Context Token Budget</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <input
+                                type="number"
+                                min={500} max={32000} step={500}
+                                value={settings.knowledge.knowledgeContextTokenBudget}
+                                onChange={e => updateKnowledge({ knowledgeContextTokenBudget: Number(e.target.value) })}
+                                style={{
+                                    flex: 1, background: 'rgba(255,255,255,0.04)',
+                                    border: '1px solid rgba(255,255,255,0.1)', borderRadius: 10,
+                                    padding: '10px 12px', color: '#e8e0d4', fontSize: 13,
+                                    outline: 'none', fontFamily: 'inherit',
+                                }}
+                            />
+                            <span style={valueStyle}>tokens</span>
+                        </div>
+                        <p style={hintStyle}>Maximum tokens reserved for injected knowledge context per chat turn.</p>
+                    </div>
+
+                    {/* Top-K Chunks */}
+                    <div>
+                        <label style={labelStyle}>Top-K Chunks per Query</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                            <input
+                                type="range"
+                                min={1} max={20} step={1}
+                                value={settings.knowledge.topK}
+                                onChange={e => updateKnowledge({ topK: Number(e.target.value) })}
+                                style={{ flex: 1, accentColor: '#C9A96E' }}
+                            />
+                            <span style={valueStyle}>{settings.knowledge.topK} chunks</span>
+                        </div>
+                        <p style={hintStyle}>Number of most-relevant chunks retrieved per query.</p>
+                    </div>
+
+                    {/* RAG Prompt Template */}
+                    <div>
+                        <label style={labelStyle}>RAG Prompt Template</label>
+                        <textarea
+                            value={settings.knowledge.ragPromptTemplate}
+                            onChange={e => updateKnowledge({ ragPromptTemplate: e.target.value })}
+                            rows={6}
+                            style={{
+                                width: '100%',
+                                background: 'rgba(255,255,255,0.03)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: 12,
+                                padding: '12px 14px',
+                                color: '#e8e0d4',
+                                fontSize: 12,
+                                fontFamily: "'Courier New', monospace",
+                                lineHeight: 1.65,
+                                resize: 'vertical',
+                                outline: 'none',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                        <p style={hintStyle}>
+                            {'{{chunks}}'}  is replaced with retrieved source blocks at query time.
+                        </p>
+                    </div>
+
+                    {/* Reset to defaults */}
+                    <div>
+                        <button
+                            onClick={resetKnowledgeDefaults}
+                            style={{
+                                padding: '10px 20px',
+                                borderRadius: 10,
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'transparent',
+                                color: 'rgba(255,255,255,0.45)',
+                                fontSize: 11,
+                                fontFamily: "'Courier New', monospace",
+                                letterSpacing: '0.1em',
+                                textTransform: 'uppercase',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
+                            }}
+                        >
+                            Reset to Defaults
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {activeTab === 'memory' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

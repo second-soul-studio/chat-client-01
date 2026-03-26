@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { v4 as uuidv4 } from 'uuid';
-import type { AppSettings, Chat, Message, Persona, ToolConfig, ToolCallRecord } from '@/types';
+import type { AppSettings, Chat, Message, Persona, ToolConfig, ToolCallRecord, KnowledgeCollection } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import {
     getSettings, saveSettings,
@@ -12,7 +12,9 @@ import {
     getChat,
     getToolConfigs, saveToolConfig, deleteToolConfig as dbDeleteToolConfig,
     deleteAllMemoryForPersona,
+    getCollections, saveCollection as dbSaveCollection,
 } from '@/services/db';
+import { deleteCollection as managerDeleteCollection } from '@/services/knowledge/manager';
 import { getFetcher } from '@/services/modelMeta/registry';
 
 interface AppState {
@@ -66,6 +68,12 @@ interface AppState {
     loadChatsForPersona: (personaId: string) => Promise<Chat[]>;
     removeChat: (id: string) => Promise<void>;
 
+    // ─── Knowledge Collections ────────────────────────────────────────────────
+    collections: KnowledgeCollection[];
+    loadCollections: () => Promise<void>;
+    saveCollection: (c: KnowledgeCollection) => Promise<void>;
+    removeCollection: (id: string) => Promise<void>;
+
     // ─── Tool Configs ─────────────────────────────────────────────────────────
     toolConfigs: ToolConfig[];
     addToolConfig: (config: ToolConfig) => Promise<void>;
@@ -92,15 +100,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     initialised: false,
 
     async init() {
-        const [settings, personas, providers, modelConfigs, toolConfigs] = await Promise.all([
+        const [settings, personas, providers, modelConfigs, toolConfigs, collections] = await Promise.all([
             getSettings(),
             getPersonas(),
             getProviders(),
             getModelConfigs(),
             getToolConfigs(),
+            getCollections(),
         ]);
         const sorted = personas.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-        set({ settings, personas: sorted, providers, modelConfigs, toolConfigs, initialised: true });
+        set({ settings, personas: sorted, providers, modelConfigs, toolConfigs, collections, initialised: true });
     },
 
     // ─── Settings ───────────────────────────────────────────────────────────
@@ -361,6 +370,42 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     async removeChat(id) {
         await dbDeleteChat(id);
+    },
+
+    // ─── Knowledge Collections ───────────────────────────────────────────────
+
+    collections: [],
+
+    async loadCollections() {
+        const collections = await getCollections();
+        set({ collections });
+    },
+
+    async saveCollection(c) {
+        await dbSaveCollection(c);
+        set(s => {
+            const exists = s.collections.some(x => x.id === c.id);
+            return {
+                collections: exists
+                    ? s.collections.map(x => x.id === c.id ? c : x)
+                    : [...s.collections, c],
+            };
+        });
+    },
+
+    async removeCollection(id) {
+        await managerDeleteCollection(id);
+        const { personas } = get();
+        const affected = personas.filter(p => p.knowledgeCollectionIds?.includes(id));
+        const updated = affected.map(p => ({
+            ...p,
+            knowledgeCollectionIds: p.knowledgeCollectionIds!.filter(x => x !== id),
+        }));
+        await Promise.all(updated.map(p => savePersona(p)));
+        set(s => ({
+            collections: s.collections.filter(c => c.id !== id),
+            personas: s.personas.map(p => updated.find(u => u.id === p.id) ?? p),
+        }));
     },
 
     // ─── Tool Configs ────────────────────────────────────────────────────────

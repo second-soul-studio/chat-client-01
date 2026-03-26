@@ -194,7 +194,7 @@ export async function deletePersona(id: string): Promise<void> {
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-const DEFAULT_KNOWLEDGE_SETTINGS: KnowledgeSettings = {
+export const DEFAULT_KNOWLEDGE_SETTINGS: KnowledgeSettings = {
     defaultChunkSize: 1000,
     defaultChunkOverlap: 100,
     knowledgeContextTokenBudget: 3000,
