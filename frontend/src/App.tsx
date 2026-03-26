@@ -7,6 +7,7 @@ import ChatPage from '@/components/ChatPage';
 import HistoryPage from '@/components/HistoryPage';
 import SettingsPage from '@/components/SettingsPage';
 import MemoryPage from '@/components/MemoryPage';
+import KnowledgePage from '@/components/KnowledgePage';
 
 export default function App() {
     const { init, initialised } = useAppStore();
@@ -34,6 +35,7 @@ export default function App() {
                 <Route path="/history" element={<HistoryPage />} />
                 <Route path="/memory/:personaId" element={<MemoryPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/knowledge" element={<KnowledgePage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </AppShell>
