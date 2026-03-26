@@ -9,7 +9,8 @@ import FloatingHearts from './FloatingHearts';
 import MemorySidebar from './MemorySidebar';
 import { detectMemories, shouldRunDetection, consolidateMemory } from '@/services/memory';
 import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries, getSuggestedPendingEntries, deleteExpiredSuggestedEntries, getSettings, updateChatLastDetection } from '@/services/db';
-import type { Message, MemoryPendingEntry } from '@/types';
+import type { Message, MemoryPendingEntry, MemoryType } from '@/types';
+import { MEMORY_TYPE_EMOJI } from '@/types';
 
 export default function ChatPage() {
     const { personaId, chatId } = useParams<{ personaId: string; chatId?: string }>();
@@ -59,6 +60,10 @@ export default function ChatPage() {
     // Memory sidebar state
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const sidebarOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    // Detection bubble state
+    const [detectionBubble, setDetectionBubble] = useState<Partial<Record<MemoryType, number>> | null>(null);
+    const detectionBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Initialise chat + load suggested memory entries
     useEffect(() => {
@@ -202,6 +207,15 @@ export default function ChatPage() {
                 } else {
                     // Show in-chat popup for immediate review
                     setSuggestedEntries(prev => [...prev, ...entries]);
+
+                    // Show rising bubble with type breakdown
+                    const counts = entries.reduce<Partial<Record<MemoryType, number>>>((acc, e) => {
+                        acc[e.type] = (acc[e.type] ?? 0) + 1;
+                        return acc;
+                    }, {});
+                    if (detectionBubbleTimer.current) clearTimeout(detectionBubbleTimer.current);
+                    setDetectionBubble(counts);
+                    detectionBubbleTimer.current = setTimeout(() => setDetectionBubble(null), 3000);
                 }
             }
         } catch (err) {
@@ -607,7 +621,47 @@ export default function ChatPage() {
                     backdropFilter: 'blur(20px)',
                 }}
             >
-                <div style={{ maxWidth: 800, margin: '0 auto' }} ref={inputWrapperRef}>
+                <div style={{ maxWidth: 800, margin: '0 auto', position: 'relative' }} ref={inputWrapperRef}>
+                    {/* Rising detection bubble */}
+                    {detectionBubble && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                bottom: '100%',
+                                left: 0,
+                                right: 0,
+                                display: 'flex',
+                                justifyContent: 'center',
+                                pointerEvents: 'none',
+                                zIndex: 10,
+                                paddingBottom: 6,
+                            }}
+                        >
+                            <button
+                                onClick={() => { setSidebarOpen(true); setDetectionBubble(null); }}
+                                style={{
+                                    animation: 'bubbleRise 3s ease-out forwards',
+                                    padding: '5px 12px',
+                                    borderRadius: 20,
+                                    border: `1px solid ${persona.color}55`,
+                                    background: `rgba(7,5,12,0.92)`,
+                                    color: persona.color,
+                                    fontSize: 12,
+                                    fontFamily: "'Courier New', monospace",
+                                    letterSpacing: '0.06em',
+                                    cursor: 'pointer',
+                                    backdropFilter: 'blur(8px)',
+                                    pointerEvents: 'auto',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                {(Object.entries(detectionBubble) as [MemoryType, number][])
+                                    .filter(([, n]) => n > 0)
+                                    .map(([type, n]) => `${MEMORY_TYPE_EMOJI[type]} ×${n}`)
+                                    .join('  ·  ')}
+                            </button>
+                        </div>
+                    )}
                     {/* Memory suggestion popup */}
                     {suggestedEntries.length > 0 && (
                         <MemorySuggestion
@@ -678,6 +732,18 @@ export default function ChatPage() {
                             padding: '8px 8px 8px 16px',
                         }}
                     >
+                        {isDetecting && (
+                            <span
+                                style={{
+                                    width: 7,
+                                    height: 7,
+                                    borderRadius: '50%',
+                                    background: persona.color,
+                                    flexShrink: 0,
+                                    animation: 'pulse 1s ease-in-out infinite',
+                                }}
+                            />
+                        )}
                         <textarea
                             ref={textareaRef}
                             value={input}
