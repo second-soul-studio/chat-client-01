@@ -86,6 +86,13 @@ export default function ChatPage() {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [activeChat?.messages.length, isStreaming]);
 
+    // Restore focus to input after streaming ends
+    useEffect(() => {
+        if (!isStreaming) {
+            textareaRef.current?.focus();
+        }
+    }, [isStreaming]);
+
     // Pulse badge when new suggestions arrive
     useEffect(() => {
         if (suggestedEntries.length > prevSuggestedCount.current && suggestedEntries.length > 0) {
