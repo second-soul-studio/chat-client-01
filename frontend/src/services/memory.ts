@@ -6,7 +6,7 @@ import {
     getMemoryTopics, saveMemoryTopic, deleteMemoryTopic,
     getAcceptedPendingEntries, clearAcceptedPendingEntries,
 } from '@/services/db';
-import { buildOpenAIHeaders } from '@/services/api';
+import { buildOpenAIHeaders, retry502 } from '@/services/api';
 import { proxiedFetch } from '@/services/proxiedFetch';
 import { enqueue } from '@/services/requestQueue';
 import DETECTION_PROMPT from '@/data/prompts/memory-detection.md?raw';
@@ -41,7 +41,7 @@ async function _callMemoryWorkerInner(
         baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1';
     }
 
-    const response = await proxiedFetch(`${baseUrl}/chat/completions`, {
+    const response = await retry502(() => proxiedFetch(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: buildOpenAIHeaders(provider.apiKey),
         body: JSON.stringify({
@@ -54,7 +54,7 @@ async function _callMemoryWorkerInner(
             max_tokens: 4096,
             stream: false,
         }),
-    });
+    }));
 
     if (!response.ok) {
         const error = await response.text();
@@ -71,7 +71,7 @@ async function callAnthropic(
     provider: Provider,
     model: ModelConfig,
 ): Promise<string> {
-    const response = await proxiedFetch(`${provider.baseUrl}/messages`, {
+    const response = await retry502(() => proxiedFetch(`${provider.baseUrl}/messages`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ async function callAnthropic(
             max_tokens: 4096,
             stream: false,
         }),
-    });
+    }));
 
     if (!response.ok) {
         const error = await response.text();
