@@ -75,7 +75,7 @@ export function searchWithWorker(
             reject(error);
         };
 
-        worker.postMessage({ queryEmbedding, chunks, topK }, [queryEmbedding.buffer]);
+        worker.postMessage({ queryEmbedding, chunks, topK });
     });
 }
 
