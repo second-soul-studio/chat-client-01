@@ -49,6 +49,36 @@ export class BruteForceSearch implements SearchStrategy {
     }
 }
 
+// ─── Worker-based search ──────────────────────────────────────────────────────
+
+// Threshold above which the Worker path is used
+export const WORKER_CHUNK_THRESHOLD = 2000;
+
+export function searchWithWorker(
+    queryEmbedding: Float32Array,
+    chunks: KnowledgeChunk[],
+    topK: number,
+): Promise<ScoredChunk[]> {
+    return new Promise((resolve, reject) => {
+        const worker = new Worker(
+            new URL('../../workers/knowledgeSearch.worker.ts', import.meta.url),
+            { type: 'module' },
+        );
+
+        worker.onmessage = (event: MessageEvent<{ results: ScoredChunk[] }>) => {
+            worker.terminate();
+            resolve(event.data.results);
+        };
+
+        worker.onerror = (error: ErrorEvent) => {
+            worker.terminate();
+            reject(error);
+        };
+
+        worker.postMessage({ queryEmbedding, chunks, topK }, [queryEmbedding.buffer]);
+    });
+}
+
 // ─── Collection-scoped search ─────────────────────────────────────────────────
 
 export async function searchCollection(
@@ -62,8 +92,10 @@ export async function searchCollection(
         getDocumentsByCollection(collectionId),
     ]);
 
-    const strategy = new BruteForceSearch();
-    const results = strategy.search(queryEmbedding, chunks, topK);
+    const results =
+        chunks.length > WORKER_CHUNK_THRESHOLD
+            ? await searchWithWorker(queryEmbedding, chunks, topK)
+            : new BruteForceSearch().search(queryEmbedding, chunks, topK);
 
     const collectionName = collection?.name ?? collectionId;
     const docNameById = new Map(documents.map(d => [d.id, d.name]));
