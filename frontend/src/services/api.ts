@@ -1,7 +1,12 @@
-import type { Message, AppSettings, Persona } from '@/types';
+import type { Message, AppSettings, Persona, ScoredChunk } from '@/types';
 import type { Provider, ModelConfig } from '@/types/providers';
 import { proxiedFetch } from './proxiedFetch';
 import { formatMemoryForPrompt } from './memory';
+import { getCollections } from './db';
+import { embedText } from './knowledge/embeddings';
+import { searchMultipleCollections } from './knowledge/search';
+import { parseCollectionMentions, resolveCollectionsByName } from './knowledge/mentions';
+import { formatKnowledgeContext } from './knowledge/formatter';
 
 // ─── Token Estimation ─────────────────────────────────────────────────────────
 
@@ -56,6 +61,67 @@ function buildAnthropicHeaders(apiKey: string): Record<string, string> {
     };
 }
 
+// ─── RAG Context Builder ──────────────────────────────────────────────────────
+
+async function buildKnowledgeBlock(
+    messages: Message[],
+    settings: AppSettings,
+    persona: Persona,
+): Promise<string> {
+    const userMessageText = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
+    if (!userMessageText) return '';
+
+    const personaCollectionIds = persona.knowledgeCollectionIds ?? [];
+
+    let allCollections;
+    try {
+        allCollections = await getCollections();
+    } catch {
+        return '';
+    }
+
+    const mentionedCollectionIds = resolveCollectionsByName(
+        parseCollectionMentions(userMessageText),
+        allCollections,
+    ).map(c => c.id);
+
+    const collectionIds = [...new Set([...personaCollectionIds, ...mentionedCollectionIds])];
+    if (collectionIds.length === 0) return '';
+
+    try {
+        // Group relevant collections by embedding model to avoid duplicate API calls
+        const relevantCollections = allCollections.filter(c => collectionIds.includes(c.id));
+        const byModel = new Map<string, { providerId: string; modelSlug: string; ids: string[] }>();
+        for (const c of relevantCollections) {
+            const key = `${c.embeddingProviderId}::${c.embeddingModelSlug}`;
+            if (!byModel.has(key)) {
+                byModel.set(key, { providerId: c.embeddingProviderId, modelSlug: c.embeddingModelSlug, ids: [] });
+            }
+            byModel.get(key)!.ids.push(c.id);
+        }
+
+        const topK = settings.knowledge.topK;
+        const allResults: ScoredChunk[] = [];
+
+        for (const { providerId, modelSlug, ids } of byModel.values()) {
+            const embedding = await embedText(userMessageText, providerId, modelSlug);
+            const results = await searchMultipleCollections(embedding, ids, topK);
+            allResults.push(...results);
+        }
+
+        allResults.sort((a, b) => b.score - a.score);
+
+        return formatKnowledgeContext(
+            allResults,
+            settings.knowledge.ragPromptTemplate,
+            settings.knowledge.knowledgeContextTokenBudget,
+        );
+    } catch (err) {
+        console.warn('Knowledge context injection failed:', err);
+        return '';
+    }
+}
+
 // ─── Send Message ─────────────────────────────────────────────────────────────
 
 export interface SendMessageOptions {
@@ -77,11 +143,15 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         ? await formatMemoryForPrompt(persona.id)
         : '';
 
-    // Build system prompt: global → persona → memory → per-model user addition
+    // Build knowledge context block (RAG)
+    const knowledgeBlock = await buildKnowledgeBlock(messages, settings, persona);
+
+    // Build system prompt: global → persona → memory → knowledge → per-model user addition
     const systemPrompt = [
         settings.globalSystemPrompt,
         persona.systemPrompt,
         memoryBlock,
+        knowledgeBlock,
         model.userSystemPrompt,
     ].filter(Boolean).join('\n\n');
 

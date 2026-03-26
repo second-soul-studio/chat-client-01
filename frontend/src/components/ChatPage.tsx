@@ -15,7 +15,7 @@ export default function ChatPage() {
     const navigate = useNavigate();
 
     const {
-        personas, providers, modelConfigs, settings,
+        personas, providers, modelConfigs, settings, collections,
         activeChat, isStreaming,
         loadOrCreateChat, addMessage, updateLastAssistantMessage,
         finaliseMessage, setIsStreaming,
@@ -36,8 +36,13 @@ export default function ChatPage() {
     const persona = personas.find(p => p.id === personaId);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const inputWrapperRef = useRef<HTMLDivElement>(null);
     const [input, setInput] = useState('');
     const [error, setError] = useState<string | null>(null);
+
+    // #mention autocomplete
+    const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+    const [mentionAnchorIndex, setMentionAnchorIndex] = useState(0); // start position of current #token
     // Thinking starts at persona's default; user can flip it per conversation
     const [thinkingEnabled, setThinkingEnabled] = useState(() => persona?.thinkingEnabled ?? false);
     const [searchEnabled, setSearchEnabled] = useState(false);
@@ -91,11 +96,38 @@ export default function ChatPage() {
         prevSuggestedCount.current = suggestedEntries.length;
     }, [suggestedEntries.length]);
 
-    // Auto-resize textarea
+    // Auto-resize textarea + #mention detection
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setInput(e.target.value);
+        const value = e.target.value;
+        setInput(value);
         e.target.style.height = 'auto';
         e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+
+        // Detect a #mention token immediately before the cursor
+        const cursor = e.target.selectionStart ?? value.length;
+        const textBeforeCursor = value.slice(0, cursor);
+        const mentionMatch = textBeforeCursor.match(/#([\w-]*)$/);
+        if (mentionMatch && collections.length > 0) {
+            setMentionQuery(mentionMatch[1].toLowerCase());
+            setMentionAnchorIndex(cursor - mentionMatch[0].length);
+        } else {
+            setMentionQuery(null);
+        }
+    };
+
+    const insertMention = (collectionName: string) => {
+        const cursor = textareaRef.current?.selectionStart ?? input.length;
+        const newText = input.slice(0, mentionAnchorIndex) + `#${collectionName}` + input.slice(cursor);
+        setInput(newText);
+        setMentionQuery(null);
+        // Restore focus
+        setTimeout(() => {
+            if (textareaRef.current) {
+                const pos = mentionAnchorIndex + collectionName.length + 1;
+                textareaRef.current.focus();
+                textareaRef.current.setSelectionRange(pos, pos);
+            }
+        }, 0);
     };
 
     // ─── Memory Detection ─────────────────────────────────────────────────────
@@ -337,6 +369,11 @@ export default function ChatPage() {
     }, [isStreaming, activeChat, removeLastAssistantMessage, doSend]);
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (mentionQuery !== null && e.key === 'Escape') {
+            e.preventDefault();
+            setMentionQuery(null);
+            return;
+        }
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -357,6 +394,11 @@ export default function ChatPage() {
     }
 
     const messages = activeChat?.messages ?? [];
+
+    // Filtered collection suggestions for #mention autocomplete
+    const mentionSuggestions = mentionQuery !== null
+        ? collections.filter(c => c.name.toLowerCase().includes(mentionQuery))
+        : [];
 
     const lastUserMessageId = [...messages].reverse().find(m => m.role === 'user')?.id;
     const lastAssistantId = [...messages].reverse().find(m => m.role === 'assistant')?.id;
@@ -526,7 +568,7 @@ export default function ChatPage() {
                     backdropFilter: 'blur(20px)',
                 }}
             >
-                <div style={{ maxWidth: 800, margin: '0 auto' }}>
+                <div style={{ maxWidth: 800, margin: '0 auto' }} ref={inputWrapperRef}>
                     {/* Memory suggestion popup */}
                     {suggestedEntries.length > 0 && (
                         <MemorySuggestion
@@ -539,6 +581,53 @@ export default function ChatPage() {
                             onEdit={handleEditEntry}
                         />
                     )}
+                    {/* #mention autocomplete dropdown — shown above input */}
+                    {mentionSuggestions.length > 0 && (
+                        <div
+                            style={{
+                                marginBottom: 6,
+                                background: 'rgba(15,12,22,0.97)',
+                                border: `1px solid ${persona.color}44`,
+                                borderRadius: 12,
+                                overflow: 'hidden',
+                                boxShadow: `0 -4px 20px rgba(0,0,0,0.4)`,
+                            }}
+                        >
+                            {mentionSuggestions.map(c => (
+                                <button
+                                    key={c.id}
+                                    onMouseDown={e => { e.preventDefault(); insertMention(c.name); }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        width: '100%',
+                                        padding: '8px 14px',
+                                        background: 'none',
+                                        border: 'none',
+                                        borderBottom: `1px solid rgba(255,255,255,0.04)`,
+                                        color: '#e8e0d4',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        fontSize: 13,
+                                        fontFamily: "'Courier New', monospace",
+                                        transition: 'background 0.15s',
+                                    }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = `${persona.color}18`)}
+                                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                                >
+                                    <span style={{ color: persona.color }}>#</span>
+                                    <span style={{ flex: 1, marginLeft: 4 }}>{c.name}</span>
+                                    {c.description && (
+                                        <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: 11, marginLeft: 8 }}>
+                                            {c.description}
+                                        </span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     <div
                         style={{
                             display: 'flex',
