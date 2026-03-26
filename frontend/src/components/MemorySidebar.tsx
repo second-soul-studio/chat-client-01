@@ -31,6 +31,7 @@ export default function MemorySidebar({
     }
 
     function commitEdit(entryId: string) {
+        if (editingId !== entryId) return;
         if (editContent.trim()) onEdit(entryId, editContent.trim());
         setEditingId(null);
     }

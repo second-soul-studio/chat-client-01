@@ -65,6 +65,14 @@ export default function ChatPage() {
     const [detectionBubble, setDetectionBubble] = useState<Partial<Record<MemoryType, number>> | null>(null);
     const detectionBubbleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+    // Clean up timers on unmount
+    useEffect(() => {
+        return () => {
+            if (sidebarOpenTimer.current) clearTimeout(sidebarOpenTimer.current);
+            if (detectionBubbleTimer.current) clearTimeout(detectionBubbleTimer.current);
+        };
+    }, []);
+
     // Initialise chat + load suggested memory entries
     useEffect(() => {
         if (personaId) {
