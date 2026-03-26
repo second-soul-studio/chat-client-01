@@ -52,7 +52,7 @@ export default function KnowledgePage() {
         // Reset input so the same file can be re-imported
         e.target.value = '';
         const reader = new FileReader();
-        reader.onload = async () => {
+        reader.onload = () => {
             try {
                 const raw = JSON.parse(reader.result as string) as ImportExportData;
                 if (raw.version !== 1) {
@@ -63,7 +63,7 @@ export default function KnowledgePage() {
                     setImportStatus('Import failed: invalid file structure');
                     return;
                 }
-                await runImport(raw);
+                runImport(raw);
             } catch {
                 setImportStatus('Import failed: could not parse file');
             }
@@ -72,6 +72,7 @@ export default function KnowledgePage() {
     };
 
     const runImport = async (data: ImportExportData) => {
+        try {
         const { collection, documents, chunks } = data;
         const docCount = documents.length;
 
@@ -141,6 +142,9 @@ export default function KnowledgePage() {
         await loadCollections();
         setImportStatus(`Imported ${docCount} document${docCount === 1 ? '' : 's'}.${providerWarning}`);
         setTimeout(() => setImportStatus(null), providerWarning ? 8000 : 4000);
+        } catch (err) {
+            setImportStatus(`Import failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+        }
     };
 
     return (
@@ -391,14 +395,17 @@ function DetailView({
             clearInterval(pollRef.current);
             pollRef.current = null;
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [documents]);
+
+    useEffect(() => {
         return () => {
             if (pollRef.current) {
                 clearInterval(pollRef.current);
                 pollRef.current = null;
             }
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [documents]);
+    }, []);
 
     const handleDeleteDoc = async (docId: string) => {
         if (!confirm('Delete this document and all its chunks?')) return;
@@ -458,11 +465,14 @@ function DetailView({
 
             const blob = new Blob([JSON.stringify(exportData)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${collection.name.replace(/\s+/g, '-').toLowerCase()}-export.json`;
-            a.click();
-            URL.revokeObjectURL(url);
+            try {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${collection.name.replace(/\s+/g, '-').toLowerCase()}-export.json`;
+                a.click();
+            } finally {
+                URL.revokeObjectURL(url);
+            }
         } finally {
             setExporting(false);
         }
