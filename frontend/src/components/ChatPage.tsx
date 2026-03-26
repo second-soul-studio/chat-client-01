@@ -6,6 +6,7 @@ import { toolLoop } from '@/services/toolLoop';
 import { AssistantBubble, UserBubble, TypingIndicator } from './ChatBubbles';
 import MemorySuggestion from './MemorySuggestion';
 import FloatingHearts from './FloatingHearts';
+import MemorySidebar from './MemorySidebar';
 import { detectMemories, shouldRunDetection, consolidateMemory } from '@/services/memory';
 import { savePendingEntry, deletePendingEntry, getMemoryMeta, saveMemoryMeta, getAcceptedPendingEntries, getSuggestedPendingEntries, deleteExpiredSuggestedEntries, getSettings, updateChatLastDetection } from '@/services/db';
 import type { Message, MemoryPendingEntry } from '@/types';
@@ -54,6 +55,10 @@ export default function ChatPage() {
     const [showHearts, setShowHearts] = useState(false);
     const [isBadgePulsing, setIsBadgePulsing] = useState(false);
     const prevSuggestedCount = useRef(0);
+
+    // Memory sidebar state
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const sidebarOpenTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Initialise chat + load suggested memory entries
     useEffect(() => {
@@ -269,6 +274,16 @@ export default function ChatPage() {
         });
     }, []);
 
+    const handleSidebarMouseEnter = useCallback(() => {
+        if (sidebarOpenTimer.current) clearTimeout(sidebarOpenTimer.current);
+        sidebarOpenTimer.current = setTimeout(() => setSidebarOpen(true), 200);
+    }, []);
+
+    const handleSidebarMouseLeave = useCallback(() => {
+        if (sidebarOpenTimer.current) clearTimeout(sidebarOpenTimer.current);
+        setSidebarOpen(false);
+    }, []);
+
     const doSend = useCallback(async (_content: string, priorMessages: Message[]) => {
         if (!persona || !settings) return;
 
@@ -422,8 +437,25 @@ export default function ChatPage() {
                 flexDirection: 'column',
                 height: '100%',
                 background: '#07050c',
+                position: 'relative',
+                overflow: 'hidden',
             }}
         >
+            {/* Memory sidebar — overlays chat from left */}
+            <MemorySidebar
+                entries={suggestedEntries}
+                personaColor={persona.color}
+                isOpen={sidebarOpen}
+                isPulsing={isBadgePulsing}
+                onMouseEnter={handleSidebarMouseEnter}
+                onMouseLeave={handleSidebarMouseLeave}
+                onToggle={() => setSidebarOpen(v => !v)}
+                onAccept={handleAcceptEntry}
+                onAcceptAll={handleAcceptAll}
+                onDismiss={handleDismissEntry}
+                onDismissAll={handleDismissAll}
+                onEdit={handleEditEntry}
+            />
             {/* Header */}
             <div
                 style={{
