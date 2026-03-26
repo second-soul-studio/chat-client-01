@@ -99,6 +99,7 @@ export interface ToolLoopResult {
     content: string;
     thinking?: string;
     toolCalls: ToolCallRecord[];
+    knowledgeSources?: Array<{ collectionName: string; documentName: string; content: string; score: number }>;
 }
 
 export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {

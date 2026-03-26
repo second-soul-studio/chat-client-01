@@ -310,7 +310,7 @@ export default function ChatPage() {
             if (result.toolCalls.length > 0) {
                 updateLastToolCalls(result.toolCalls);
             }
-            await finaliseMessage(result.content, result.thinking);
+            await finaliseMessage(result.content, result.thinking, result.knowledgeSources);
 
             // Memory: count turn and check if detection is due
             if (personaId && persona.memoryEnabled !== false) {

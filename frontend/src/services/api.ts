@@ -63,13 +63,15 @@ function buildAnthropicHeaders(apiKey: string): Record<string, string> {
 
 // ─── RAG Context Builder ──────────────────────────────────────────────────────
 
+type KnowledgeSource = { collectionName: string; documentName: string; content: string; score: number };
+
 async function buildKnowledgeBlock(
     messages: Message[],
     settings: AppSettings,
     persona: Persona,
-): Promise<string> {
+): Promise<{ block: string; sources: KnowledgeSource[] }> {
     const userMessageText = [...messages].reverse().find(m => m.role === 'user')?.content ?? '';
-    if (!userMessageText) return '';
+    if (!userMessageText) return { block: '', sources: [] };
 
     const personaCollectionIds = persona.knowledgeCollectionIds ?? [];
 
@@ -77,7 +79,7 @@ async function buildKnowledgeBlock(
     try {
         allCollections = await getCollections();
     } catch {
-        return '';
+        return { block: '', sources: [] };
     }
 
     const mentionedCollectionIds = resolveCollectionsByName(
@@ -86,7 +88,7 @@ async function buildKnowledgeBlock(
     ).map(c => c.id);
 
     const collectionIds = [...new Set([...personaCollectionIds, ...mentionedCollectionIds])];
-    if (collectionIds.length === 0) return '';
+    if (collectionIds.length === 0) return { block: '', sources: [] };
 
     try {
         // Group relevant collections by embedding model to avoid duplicate API calls
@@ -111,14 +113,23 @@ async function buildKnowledgeBlock(
 
         allResults.sort((a, b) => b.score - a.score);
 
-        return formatKnowledgeContext(
+        const block = formatKnowledgeContext(
             allResults,
             settings.knowledge.ragPromptTemplate,
             settings.knowledge.knowledgeContextTokenBudget,
         );
+
+        const sources = allResults.map(r => ({
+            collectionName: r.collectionName,
+            documentName: r.documentName,
+            content: r.chunk.content,
+            score: r.score,
+        }));
+
+        return { block, sources };
     } catch (err) {
         console.warn('Knowledge context injection failed:', err);
-        return '';
+        return { block: '', sources: [] };
     }
 }
 
@@ -135,7 +146,7 @@ export interface SendMessageOptions {
     onThinkingChunk?: (thinking: string) => void;
 }
 
-export async function sendMessage(options: SendMessageOptions): Promise<{ content: string; thinking?: string }> {
+export async function sendMessage(options: SendMessageOptions): Promise<{ content: string; thinking?: string; knowledgeSources?: Array<{ collectionName: string; documentName: string; content: string; score: number }> }> {
     const { messages, settings, persona, provider, model, thinkingEnabled, onChunk, onThinkingChunk } = options;
 
     // Build memory block (empty string if no memories or memory disabled)
@@ -144,7 +155,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         : '';
 
     // Build knowledge context block (RAG)
-    const knowledgeBlock = await buildKnowledgeBlock(messages, settings, persona);
+    const { block: knowledgeBlock, sources: knowledgeSources } = await buildKnowledgeBlock(messages, settings, persona);
 
     // Build system prompt: global → persona → memory → knowledge → per-model user addition
     const systemPrompt = [
@@ -172,8 +183,10 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     const topP = persona.paramOverrides?.topP ?? model.defaultTopP;
     const maxOutputTokens = persona.paramOverrides?.maxOutputTokens ?? model.maxOutputTokens;
 
+    const sourcesResult = knowledgeSources.length > 0 ? knowledgeSources : undefined;
+
     if (provider.adapter === 'anthropic') {
-        return sendAnthropicMessage({
+        const result = await sendAnthropicMessage({
             baseUrl: provider.baseUrl,
             apiKey: provider.apiKey,
             modelSlug: effectiveSlug,
@@ -185,6 +198,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
             onChunk,
             onThinkingChunk,
         });
+        return { ...result, knowledgeSources: sourcesResult };
     }
 
     // openai, ollama, ollama-cloud all use OpenAI-compatible format;
@@ -203,7 +217,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         baseUrl = baseUrl.replace(/\/v1\/?$/, '') + '/v1';
     }
 
-    return sendOpenAIMessage({
+    const result = await sendOpenAIMessage({
         baseUrl,
         apiKey: provider.apiKey,
         modelSlug: effectiveSlug,
@@ -218,6 +232,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         onChunk,
         onThinkingChunk,
     });
+    return { ...result, knowledgeSources: sourcesResult };
 }
 
 // ─── OpenAI-Compatible Adapter ────────────────────────────────────────────────

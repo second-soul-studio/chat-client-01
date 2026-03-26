@@ -53,7 +53,7 @@ interface AppState {
     loadOrCreateChat: (personaId: string, chatId?: string) => Promise<void>;
     addMessage: (message: Message) => void;
     updateLastAssistantMessage: (content: string, thinking?: string) => void;
-    finaliseMessage: (content: string, thinking?: string) => Promise<void>;
+    finaliseMessage: (content: string, thinking?: string, knowledgeSources?: Array<{ collectionName: string; documentName: string; content: string; score: number }>) => Promise<void>;
     setIsStreaming: (v: boolean) => void;
     startNewChat: (personaId: string) => void;
 
@@ -311,13 +311,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
     },
 
-    async finaliseMessage(content, thinking) {
+    async finaliseMessage(content, thinking, knowledgeSources) {
         set(s => {
             if (!s.activeChat) return s;
             const messages = [...s.activeChat.messages];
             const last = messages[messages.length - 1];
             if (!last || last.role !== 'assistant') return s;
-            messages[messages.length - 1] = { ...last, content, thinking };
+            messages[messages.length - 1] = { ...last, content, thinking, knowledgeSources };
             return { activeChat: { ...s.activeChat, messages } };
         });
         set({ streamingThinking: '' });

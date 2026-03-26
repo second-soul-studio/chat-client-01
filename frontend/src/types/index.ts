@@ -44,6 +44,12 @@ export interface Message {
     thinking?: string;              // CoT content — only on assistant messages
     timestamp: number;
     toolCalls?: ToolCallRecord[];
+    knowledgeSources?: Array<{
+        collectionName: string;
+        documentName: string;
+        content: string;
+        score: number;
+    }>;
 }
 
 export interface Chat {

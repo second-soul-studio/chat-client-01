@@ -151,6 +151,77 @@ export function ThinkingBlock({
     );
 }
 
+// ─── Sources Block ────────────────────────────────────────────────────────────
+
+function SourcesBlock({ sources, color }: {
+    sources: NonNullable<Message['knowledgeSources']>;
+    color: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const contentRef = useRef<HTMLDivElement>(null);
+    const [height, setHeight] = useState(0);
+
+    useEffect(() => {
+        if (contentRef.current) {
+            setHeight(open ? contentRef.current.scrollHeight : 0);
+        }
+    }, [open]);
+
+    return (
+        <div style={{ marginTop: 8 }}>
+            {/* Toggle */}
+            <div
+                onClick={() => setOpen(v => !v)}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 7,
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    padding: '4px 10px 4px 8px',
+                    borderRadius: 20,
+                    border: `1px solid ${open ? color + '44' : 'rgba(255,255,255,0.08)'}`,
+                    background: open ? `${color}0e` : 'rgba(255,255,255,0.02)',
+                    transition: 'all 0.2s ease',
+                }}
+            >
+                <span style={{ fontSize: 10, color: open ? color : 'rgba(255,255,255,0.4)', letterSpacing: '0.1em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace" }}>
+                    Sources ({sources.length})
+                </span>
+                <span style={{ fontSize: 8, color: open ? color : 'rgba(255,255,255,0.2)', transition: 'transform 0.25s ease, color 0.2s', transform: open ? 'rotate(180deg)' : 'rotate(0deg)', display: 'inline-block' }}>
+                    ▼
+                </span>
+            </div>
+
+            {/* Collapsible content */}
+            <div style={{ overflow: 'hidden', height, transition: 'height 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                <div ref={contentRef} style={{ paddingTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {sources.map((src, i) => (
+                        <div
+                            key={i}
+                            style={{
+                                padding: '8px 12px',
+                                background: `${color}08`,
+                                border: `1px solid ${color}22`,
+                                borderLeft: `2px solid ${color}55`,
+                                borderRadius: '4px 8px 8px 8px',
+                            }}
+                        >
+                            <div style={{ fontSize: 10, color, opacity: 0.7, marginBottom: 4, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em' }}>
+                                {src.collectionName} / {src.documentName}
+                                <span style={{ opacity: 0.5, marginLeft: 6 }}>({(src.score * 100).toFixed(0)}%)</span>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.45)', fontFamily: "'Lora', Georgia, serif", fontStyle: 'italic', lineHeight: 1.5 }}>
+                                {src.content.slice(0, 100)}{src.content.length > 100 ? '\u2026' : ''}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 // ─── Assistant Bubble ─────────────────────────────────────────────────────────
 
 export function AssistantBubble({
@@ -330,6 +401,10 @@ export function AssistantBubble({
                         {copied ? '✓' : '⎘'}
                     </button>
                 </div>
+
+                {message.knowledgeSources && message.knowledgeSources.length > 0 && (
+                    <SourcesBlock sources={message.knowledgeSources} color={persona.color} />
+                )}
 
                 <div style={{ marginTop: 4, marginLeft: 6, fontSize: 10, color: 'rgba(255,255,255,0.2)', fontFamily: "'Courier New', monospace", letterSpacing: '0.05em' }}>
                     {persona.name} · {new Date(message.timestamp).toLocaleTimeString('de-AT', { hour: '2-digit', minute: '2-digit' })}
