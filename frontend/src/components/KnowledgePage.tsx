@@ -94,6 +94,15 @@ export default function KnowledgePage() {
             updatedAt: new Date(),
         };
 
+        // Warn if the embedding provider from the exported collection is not available
+        const providers = useAppStore.getState().providers;
+        const providerExists = providers.some(
+            p => p.id === collection.embeddingProviderId && p.enabled
+        );
+        const providerWarning = providerExists
+            ? ''
+            : ' Warning: embedding provider not found — you may need to re-index after import.';
+
         setImportStatus(`Importing… (0/${docCount})`);
         await saveCollection(newCollection);
 
@@ -130,8 +139,8 @@ export default function KnowledgePage() {
         }
 
         await loadCollections();
-        setImportStatus(`Imported ${docCount} document${docCount === 1 ? '' : 's'}`);
-        setTimeout(() => setImportStatus(null), 4000);
+        setImportStatus(`Imported ${docCount} document${docCount === 1 ? '' : 's'}.${providerWarning}`);
+        setTimeout(() => setImportStatus(null), providerWarning ? 8000 : 4000);
     };
 
     return (
