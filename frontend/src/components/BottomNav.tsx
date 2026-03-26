@@ -43,7 +43,7 @@ export default function BottomNav() {
                     <button
                         key={item.path}
                         onClick={() => handleNav(item.path)}
-                        className="flex flex-col items-center gap-1 py-2 px-6 min-w-[44px] min-h-[44px] transition-opacity"
+                        className="flex flex-col items-center gap-1 py-2 px-6 min-w-[44px] min-h-[44px] transition-all duration-200 rounded-xl hover:bg-[rgba(255,255,255,0.06)] hover:opacity-100"
                         style={{ opacity: isActive ? 1 : 0.35 }}
                         aria-label={item.label}
                     >
