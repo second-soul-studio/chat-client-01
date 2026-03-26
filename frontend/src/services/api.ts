@@ -163,10 +163,11 @@ export interface SendMessageOptions {
     thinkingEnabled: boolean;
     onChunk?: (content: string) => void;
     onThinkingChunk?: (thinking: string) => void;
+    onRetry?: (attempt: number, max: number) => void;
 }
 
 export async function sendMessage(options: SendMessageOptions): Promise<{ content: string; thinking?: string; knowledgeSources?: Array<{ collectionName: string; documentName: string; content: string; score: number }> }> {
-    const { messages, settings, persona, provider, model, thinkingEnabled, onChunk, onThinkingChunk } = options;
+    const { messages, settings, persona, provider, model, thinkingEnabled, onChunk, onThinkingChunk, onRetry } = options;
 
     // Build memory block (empty string if no memories or memory disabled)
     const memoryBlock = persona.memoryEnabled !== false
@@ -216,6 +217,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
             maxOutputTokens,
             onChunk,
             onThinkingChunk,
+            onRetry,
         });
         return { ...result, knowledgeSources: sourcesResult };
     }
@@ -250,6 +252,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
         extraBodyParams,
         onChunk,
         onThinkingChunk,
+        onRetry,
     });
     return { ...result, knowledgeSources: sourcesResult };
 }
@@ -270,6 +273,7 @@ interface OpenAIAdapterOptions {
     extraBodyParams?: Record<string, unknown>;
     onChunk?: (content: string) => void;
     onThinkingChunk?: (thinking: string) => void;
+    onRetry?: (attempt: number, max: number) => void;
 }
 
 async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content: string; thinking?: string }> {
@@ -286,11 +290,14 @@ async function sendOpenAIMessage(opts: OpenAIAdapterOptions): Promise<{ content:
         ...(opts.extraBodyParams ?? {}),
     };
 
-    const response = await proxiedFetch(`${opts.baseUrl}/chat/completions`, {
-        method: 'POST',
-        headers: { ...buildOpenAIHeaders(opts.apiKey), ...(opts.extraHeaders ?? {}) },
-        body: JSON.stringify(body),
-    });
+    const response = await retry502(
+        () => proxiedFetch(`${opts.baseUrl}/chat/completions`, {
+            method: 'POST',
+            headers: { ...buildOpenAIHeaders(opts.apiKey), ...(opts.extraHeaders ?? {}) },
+            body: JSON.stringify(body),
+        }),
+        opts.onRetry,
+    );
 
     if (!response.ok) {
         const error = await response.text();
@@ -330,6 +337,7 @@ interface AnthropicAdapterOptions {
     maxOutputTokens: number;
     onChunk?: (content: string) => void;
     onThinkingChunk?: (thinking: string) => void;
+    onRetry?: (attempt: number, max: number) => void;
 }
 
 async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ content: string; thinking?: string }> {
@@ -345,11 +353,14 @@ async function sendAnthropicMessage(opts: AnthropicAdapterOptions): Promise<{ co
         stream: !!(opts.onChunk || opts.onThinkingChunk),
     };
 
-    const response = await proxiedFetch(`${opts.baseUrl}/messages`, {
-        method: 'POST',
-        headers: buildAnthropicHeaders(opts.apiKey),
-        body: JSON.stringify(body),
-    });
+    const response = await retry502(
+        () => proxiedFetch(`${opts.baseUrl}/messages`, {
+            method: 'POST',
+            headers: buildAnthropicHeaders(opts.apiKey),
+            body: JSON.stringify(body),
+        }),
+        opts.onRetry,
+    );
 
     if (!response.ok) {
         const error = await response.text();
