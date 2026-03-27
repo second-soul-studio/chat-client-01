@@ -214,6 +214,8 @@ const DEFAULT_SETTINGS: AppSettings = {
         suggestedEntryExpiryDays: 7,
     },
     knowledge: DEFAULT_KNOWLEDGE_SETTINGS,
+    chatFontSize: 'normal',
+    uiScale: 100,
 };
 
 export async function getSettings(): Promise<AppSettings> {
