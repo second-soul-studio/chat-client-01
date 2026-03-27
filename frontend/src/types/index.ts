@@ -21,6 +21,7 @@ export interface Persona {
     };
     order?: number;
     memoryEnabled?: boolean;        // default true — set false to disable memory for this persona
+    softCotEnabled?: boolean;       // injects <think>-tag CoT prompt for non-native reasoning models
     knowledgeCollectionIds?: string[];   // assigned Knowledge Collections
 }
 
