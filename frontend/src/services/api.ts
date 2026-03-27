@@ -55,6 +55,17 @@ export async function retry502<T extends { status: number }>(
     throw new Error('retry502: unreachable');
 }
 
+// ─── Soft CoT Prompt ──────────────────────────────────────────────────────────
+
+const SOFT_COT_PROMPT = `## RESPONSE FORMAT:
+
+Prepend your actual response with the following block:
+
+<think> reasoning here, see below </think>
+
+REASONING:
+Talk to yourself about the user prompt, explore user intent, attempt to read subtext and emotional / sentiment cues, especially (but not only) from emojis, but also from the style of language the user uses. Be creative, allow "gut feeling" to gently mix into it. In roleplays of any kind analyze context, character psychology and setting here. In roleplay aim for psychological analysis as well.`;
+
 // ─── CoT Extraction ───────────────────────────────────────────────────────────
 
 export function extractThinkingFromText(raw: string): { thinking?: string; content: string } {
@@ -177,8 +188,9 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     // Build knowledge context block (RAG)
     const { block: knowledgeBlock, sources: knowledgeSources } = await buildKnowledgeBlock(messages, settings, persona);
 
-    // Build system prompt: global → persona → memory → knowledge → per-model user addition
+    // Build system prompt: soft CoT (if enabled) → global → persona → memory → knowledge → per-model user addition
     const systemPrompt = [
+        persona.softCotEnabled ? SOFT_COT_PROMPT : '',
         settings.globalSystemPrompt,
         persona.systemPrompt,
         memoryBlock,
@@ -189,7 +201,7 @@ export async function sendMessage(options: SendMessageOptions): Promise<{ conten
     // When thinking is requested and the model has a dedicated CoT slug (nano-gpt pattern),
     // swap to that slug. Otherwise use the base slug.
     const effectiveSlug = (thinkingEnabled && model.cotSlug) ? model.cotSlug : model.slug;
-    const effectiveCot = thinkingEnabled && (!!model.cotSlug || model.supportsCot);
+    const effectiveCot = (thinkingEnabled && (!!model.cotSlug || model.supportsCot)) || !!persona.softCotEnabled;
 
     const maxContextTokens = 8000; // TODO: make configurable per model
     const contextMessages = buildContextWindow(
