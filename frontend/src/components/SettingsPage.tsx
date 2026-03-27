@@ -238,7 +238,7 @@ export default function SettingsPage() {
                                 </button>
                             ))}
                         </div>
-                        <p style={hintStyle}>Applies to chat messages only. Normal = 1.65, Large = 1.9, XL = 2.1.</p>
+                        <p style={hintStyle}>Applies to chat messages only. Small = 1.5, Normal = 1.65, Large = 1.9, XL = 2.1.</p>
                     </div>
                 </div>
             )}
