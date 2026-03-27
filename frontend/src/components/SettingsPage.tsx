@@ -28,7 +28,7 @@ export default function SettingsPage() {
         setSettings({ ...settings, knowledge: { ...DEFAULT_KNOWLEDGE_SETTINGS } });
     };
 
-    const updateDisplay = (patch: Partial<Pick<AppSettings, 'chatFontSize' | 'uiScale'>>) => {
+    const updateDisplay = (patch: Partial<Pick<AppSettings, 'chatFontSize' | 'uiScale' | 'chatFontFamily' | 'chatLineHeight'>>) => {
         setSettings({ ...settings, ...patch });
     };
 
@@ -181,6 +181,64 @@ export default function SettingsPage() {
                             ))}
                         </div>
                         <p style={hintStyle}>Scales the entire UI. Applies immediately.</p>
+                    </div>
+
+                    {/* Font Family */}
+                    <div>
+                        <label style={labelStyle}>Chat Font</label>
+                        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
+                            {(['serif', 'sans-serif'] as const).map(family => (
+                                <button
+                                    key={family}
+                                    onClick={() => updateDisplay({ chatFontFamily: family })}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px 12px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: (settings.chatFontFamily ?? 'serif') === family ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        color: (settings.chatFontFamily ?? 'serif') === family ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                                        fontSize: 12,
+                                        letterSpacing: '0.08em',
+                                        fontFamily: "'Courier New', monospace",
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    {family === 'serif' ? 'Serif' : 'Sans-Serif'}
+                                </button>
+                            ))}
+                        </div>
+                        <p style={hintStyle}>Applies to chat messages and the input box.</p>
+                    </div>
+
+                    {/* Line Height */}
+                    <div>
+                        <label style={labelStyle}>Line Spacing</label>
+                        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
+                            {(['small', 'normal', 'large', 'very-large'] as const).map(lh => (
+                                <button
+                                    key={lh}
+                                    onClick={() => updateDisplay({ chatLineHeight: lh })}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px 12px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: (settings.chatLineHeight ?? 'normal') === lh ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        color: (settings.chatLineHeight ?? 'normal') === lh ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                                        fontSize: 12,
+                                        letterSpacing: '0.08em',
+                                        fontFamily: "'Courier New', monospace",
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    {lh === 'normal' ? 'Normal' : lh === 'very-large' ? 'XL' : lh.charAt(0).toUpperCase() + lh.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                        <p style={hintStyle}>Applies to chat messages only. Normal = 1.65, Large = 1.9, XL = 2.1.</p>
                     </div>
                 </div>
             )}
