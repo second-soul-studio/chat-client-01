@@ -318,8 +318,8 @@ export function AssistantBubble({
                         padding: '14px 18px',
                         color: '#e8e0d4',
                         fontSize: 'var(--ss-chat-font-size, 14px)',
-                        fontFamily: "'Lora', Georgia, serif",
-                        lineHeight: 1.65,
+                        fontFamily: "var(--ss-chat-font-family, 'Lora', Georgia, serif)",
+                        lineHeight: 'var(--ss-chat-line-height, 1.65)',
                         backdropFilter: 'blur(10px)',
                         boxShadow: '0 4px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)',
                         position: 'relative',
@@ -492,8 +492,8 @@ export function UserBubble({
                         padding: '12px 16px',
                         color: '#e8e0d4',
                         fontSize: 'var(--ss-chat-font-size, 14px)',
-                        fontFamily: "'Lora', Georgia, serif",
-                        lineHeight: 1.65,
+                        fontFamily: "var(--ss-chat-font-family, 'Lora', Georgia, serif)",
+                        lineHeight: 'var(--ss-chat-line-height, 1.65)',
                         position: 'relative',
                     }}
                 >
