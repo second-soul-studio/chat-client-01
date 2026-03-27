@@ -216,6 +216,8 @@ const DEFAULT_SETTINGS: AppSettings = {
     knowledge: DEFAULT_KNOWLEDGE_SETTINGS,
     chatFontSize: 'normal',
     uiScale: 100,
+    chatFontFamily: 'serif',
+    chatLineHeight: 'normal',
 };
 
 export async function getSettings(): Promise<AppSettings> {

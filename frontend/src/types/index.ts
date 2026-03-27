@@ -71,6 +71,8 @@ export interface AppSettings {
     knowledge: KnowledgeSettings;
     chatFontSize: 'normal' | 'large' | 'very-large';
     uiScale: 100 | 110 | 120 | 130;
+    chatFontFamily: 'serif' | 'sans-serif';
+    chatLineHeight: 'small' | 'normal' | 'large' | 'very-large';
 }
 
 export interface BraveSearchSettings {
