@@ -128,7 +128,7 @@ export default function ChatPage() {
         const value = e.target.value;
         setInput(value);
         e.target.style.height = 'auto';
-        e.target.style.height = `${Math.min(e.target.scrollHeight, 160)}px`;
+        e.target.style.height = `${Math.min(e.target.scrollHeight, window.innerHeight * 0.5)}px`;
 
         // Detect a #mention token immediately before the cursor
         const cursor = e.target.selectionStart ?? value.length;
@@ -772,10 +772,10 @@ export default function ChatPage() {
                                 outline: 'none',
                                 color: '#e8e0d4',
                                 fontSize: 14,
-                                fontFamily: "'Lora', Georgia, serif",
+                                fontFamily: "var(--ss-chat-font-family, 'Lora', Georgia, serif)",
                                 lineHeight: 1.6,
                                 resize: 'none',
-                                overflow: 'hidden',
+                                overflow: 'auto',
                                 paddingTop: 6,
                                 paddingBottom: 6,
                             }}
