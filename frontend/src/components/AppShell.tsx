@@ -12,6 +12,18 @@ const CHAT_FONT_SIZES = {
     'very-large': '19px',
 } as const;
 
+const CHAT_FONT_FAMILIES = {
+    serif: "'Lora', Georgia, serif",
+    'sans-serif': "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+} as const;
+
+const CHAT_LINE_HEIGHTS = {
+    small: '1.5',
+    normal: '1.65',
+    large: '1.9',
+    'very-large': '2.1',
+} as const;
+
 export default function AppShell({ children }: Props) {
     const settings = useAppStore(s => s.settings);
 
@@ -19,9 +31,13 @@ export default function AppShell({ children }: Props) {
         if (!settings) return;
         const fontSize = CHAT_FONT_SIZES[settings.chatFontSize ?? 'normal'];
         const zoom = String((settings.uiScale ?? 100) / 100);
+        const fontFamily = CHAT_FONT_FAMILIES[settings.chatFontFamily ?? 'serif'];
+        const lineHeight = CHAT_LINE_HEIGHTS[settings.chatLineHeight ?? 'normal'];
         document.documentElement.style.setProperty('--ss-chat-font-size', fontSize);
         // zoom is supported in all modern browsers (Firefox 126+, May 2024)
         document.documentElement.style.setProperty('--ss-ui-zoom', zoom);
+        document.documentElement.style.setProperty('--ss-chat-font-family', fontFamily);
+        document.documentElement.style.setProperty('--ss-chat-line-height', lineHeight);
     }, [settings]);
 
     return (
