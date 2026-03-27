@@ -20,13 +20,14 @@ export default function AppShell({ children }: Props) {
         const fontSize = CHAT_FONT_SIZES[settings.chatFontSize ?? 'normal'];
         const zoom = String((settings.uiScale ?? 100) / 100);
         document.documentElement.style.setProperty('--ss-chat-font-size', fontSize);
+        // zoom is supported in all modern browsers (Firefox 126+, May 2024)
         document.documentElement.style.setProperty('--ss-ui-zoom', zoom);
     }, [settings]);
 
     return (
         <div
             className="flex flex-col h-full bg-[#07050c] text-[#e8e0d4] overflow-hidden"
-            style={{ zoom: 'var(--ss-ui-zoom)' }}
+            style={{ zoom: 'var(--ss-ui-zoom, 1)' }}
         >
             <main className="flex-1 overflow-y-auto overflow-x-hidden">
                 {children}
