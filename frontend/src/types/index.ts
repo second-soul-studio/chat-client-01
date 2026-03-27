@@ -69,6 +69,8 @@ export interface AppSettings {
     theme: 'dark';
     memorySettings: MemorySettings;
     knowledge: KnowledgeSettings;
+    chatFontSize: 'normal' | 'large' | 'very-large';
+    uiScale: 100 | 110 | 120 | 130;
 }
 
 export interface BraveSearchSettings {
