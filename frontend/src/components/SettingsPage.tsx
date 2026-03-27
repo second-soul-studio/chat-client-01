@@ -7,7 +7,7 @@ import { DEFAULT_KNOWLEDGE_SETTINGS } from '@/services/db';
 
 export default function SettingsPage() {
     const { settings, setSettings, modelConfigs, providers } = useAppStore();
-    const [activeTab, setActiveTab] = useState<'api' | 'global' | 'tools' | 'memory' | 'knowledge'>('api');
+    const [activeTab, setActiveTab] = useState<'api' | 'global' | 'display' | 'tools' | 'memory' | 'knowledge'>('api');
 
     if (!settings) return null;
 
@@ -28,6 +28,10 @@ export default function SettingsPage() {
         setSettings({ ...settings, knowledge: { ...DEFAULT_KNOWLEDGE_SETTINGS } });
     };
 
+    const updateDisplay = (patch: Partial<Pick<AppSettings, 'chatFontSize' | 'uiScale'>>) => {
+        setSettings({ ...settings, ...patch });
+    };
+
     const updateMemory = (patch: Partial<MemorySettings>) => {
         const updated: AppSettings = {
             ...settings,
@@ -45,6 +49,7 @@ export default function SettingsPage() {
     const TABS = [
         { id: 'api' as const, label: 'Providers' },
         { id: 'global' as const, label: 'Global' },
+        { id: 'display' as const, label: 'Display' },
         { id: 'tools' as const, label: 'Tools' },
         { id: 'memory' as const, label: 'Memory' },
         { id: 'knowledge' as const, label: 'Knowledge' },
@@ -115,6 +120,68 @@ export default function SettingsPage() {
                     <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginTop: 8 }}>
                         This prompt is prepended to every persona's system prompt on each request.
                     </p>
+                </div>
+            )}
+
+            {activeTab === 'display' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+                    {/* Chat Font Size */}
+                    <div>
+                        <label style={labelStyle}>Chat Font Size</label>
+                        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
+                            {(['normal', 'large', 'very-large'] as const).map(size => (
+                                <button
+                                    key={size}
+                                    onClick={() => updateDisplay({ chatFontSize: size })}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px 12px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: settings.chatFontSize === size ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        color: settings.chatFontSize === size ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                                        fontSize: 12,
+                                        letterSpacing: '0.08em',
+                                        fontFamily: "'Courier New', monospace",
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    {size === 'normal' ? 'Normal' : size === 'large' ? 'Large' : 'Very Large'}
+                                </button>
+                            ))}
+                        </div>
+                        <p style={hintStyle}>Applies to chat message text only.</p>
+                    </div>
+
+                    {/* UI Scale */}
+                    <div>
+                        <label style={labelStyle}>UI Scale</label>
+                        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 4 }}>
+                            {([100, 110, 120, 130] as const).map(scale => (
+                                <button
+                                    key={scale}
+                                    onClick={() => updateDisplay({ uiScale: scale })}
+                                    style={{
+                                        flex: 1,
+                                        padding: '8px 12px',
+                                        borderRadius: 8,
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        background: settings.uiScale === scale ? 'rgba(255,255,255,0.1)' : 'transparent',
+                                        color: settings.uiScale === scale ? '#ffffff' : 'rgba(255,255,255,0.4)',
+                                        fontSize: 12,
+                                        letterSpacing: '0.08em',
+                                        fontFamily: "'Courier New', monospace",
+                                        transition: 'all 0.15s',
+                                    }}
+                                >
+                                    {scale}%
+                                </button>
+                            ))}
+                        </div>
+                        <p style={hintStyle}>Scales the entire UI. Applies immediately.</p>
+                    </div>
                 </div>
             )}
 
