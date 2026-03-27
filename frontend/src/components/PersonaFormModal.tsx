@@ -53,6 +53,7 @@ const DEFAULT_FORM = {
     showThinking: false,
     thinkingEnabled: false,
     memoryEnabled: true,
+    softCotEnabled: false,   // instructs non-native reasoning models to think via <think> tags
     modelId: null as string | null,
     knowledgeCollectionIds: [] as string[],
 };
@@ -79,6 +80,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 showThinking: persona.showThinking,
                 thinkingEnabled: persona.thinkingEnabled,
                 memoryEnabled: persona.memoryEnabled !== false,
+                softCotEnabled: persona.softCotEnabled ?? false,
                 modelId: persona.modelId,
                 knowledgeCollectionIds: persona.knowledgeCollectionIds ?? [],
             };
@@ -104,6 +106,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 showThinking: form.showThinking,
                 thinkingEnabled: form.thinkingEnabled,
                 memoryEnabled: form.memoryEnabled,
+                softCotEnabled: form.softCotEnabled,
                 avatarUrl: null,
                 modelId: form.modelId,
                 knowledgeCollectionIds: form.knowledgeCollectionIds,
@@ -256,6 +259,30 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                             color={palette.color}
                             onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
                         />
+                    </div>
+
+                    {/* Soft CoT toggle */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 0',
+                            marginBottom: 4,
+                        }}
+                    >
+                        <div>
+                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Soft CoT</div>
+                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Instructs non-native reasoning models to think via &lt;think&gt; tags</div>
+                        </div>
+                        <Toggle
+                            checked={form.softCotEnabled}
+                            color={palette.color}
+                            onChange={v => setForm(f => ({ ...f, softCotEnabled: v }))}
+                        />
+                    </div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 16, paddingLeft: 2 }}>
+                        Also enable "Show Thinking" to see the reasoning block
                     </div>
 
                     {/* Memory toggle */}
