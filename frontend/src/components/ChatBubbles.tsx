@@ -225,7 +225,7 @@ function SourcesBlock({ sources, color }: {
 // ─── Assistant Bubble ─────────────────────────────────────────────────────────
 
 export function AssistantBubble({
-    message, persona, isStreaming, streamingThinking, thinkingBlockOpen, onThinkingToggle, pendingToolCalls,
+    message, persona, isStreaming, streamingThinking, thinkingBlockOpen, onThinkingToggle, pendingToolCalls, retryInfo,
 }: {
     message: Message;
     persona: Persona;
@@ -234,6 +234,7 @@ export function AssistantBubble({
     thinkingBlockOpen?: boolean;
     onThinkingToggle?: (open: boolean) => void;
     pendingToolCalls?: ToolCallRecord[];
+    retryInfo?: { attempt: number; max: number };
 }) {
     const [copied, setCopied] = useState(false);
     const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -325,7 +326,20 @@ export function AssistantBubble({
                     }}
                 >
                     {isStreaming ? (
-                        <TypingIndicator color={persona.color} />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <TypingIndicator color={persona.color} />
+                            {retryInfo && (
+                                <span style={{
+                                    fontSize: 10,
+                                    fontFamily: "'Courier New', monospace",
+                                    letterSpacing: '0.1em',
+                                    color: persona.color,
+                                    opacity: 0.7,
+                                }}>
+                                    retry {retryInfo.attempt}/{retryInfo.max}
+                                </span>
+                            )}
+                        </div>
                     ) : (
                         <div className="prose prose-invert prose-sm max-w-none">
                             <ReactMarkdown
