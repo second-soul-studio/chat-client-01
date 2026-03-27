@@ -268,11 +268,13 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
     let content = '';
     let thinking: string | undefined;
 
+    const supportsCot = model.supportsCot || !!opts.persona.softCotEnabled;
+
     if ((opts.onChunk || opts.onThinkingChunk) && finalResponse.body) {
         const streamed = await readStream(finalResponse.body, opts.onChunk, opts.onThinkingChunk);
         content = streamed.content;
         thinking = streamed.thinking;
-        if (!thinking && model.supportsCot) {
+        if (!thinking && supportsCot) {
             const extracted = extractThinkingFromText(content);
             content = extracted.content;
             thinking = extracted.thinking;
@@ -280,7 +282,7 @@ export async function toolLoop(opts: ToolLoopOptions): Promise<ToolLoopResult> {
     } else {
         const data = await finalResponse.json();
         content = data.choices?.[0]?.message?.content ?? '';
-        if (model.supportsCot) {
+        if (supportsCot) {
             const extracted = extractThinkingFromText(content);
             content = extracted.content;
             thinking = extracted.thinking;
