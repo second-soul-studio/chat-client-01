@@ -56,6 +56,7 @@ const DEFAULT_FORM = {
     softCotEnabled: false,   // instructs non-native reasoning models to think via <think> tags
     modelId: null as string | null,
     knowledgeCollectionIds: [] as string[],
+    temperature: 0.8,
 };
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
@@ -87,6 +88,7 @@ export default function PersonaFormModal({ persona, onClose, inline = false, onS
                 softCotEnabled: persona.softCotEnabled ?? false,
                 modelId: persona.modelId,
                 knowledgeCollectionIds: persona.knowledgeCollectionIds ?? [],
+                temperature: persona.paramOverrides?.temperature ?? 0.8,
             };
         }
         return { ...DEFAULT_FORM };
@@ -114,6 +116,10 @@ export default function PersonaFormModal({ persona, onClose, inline = false, onS
                 avatarUrl: null,
                 modelId: form.modelId,
                 knowledgeCollectionIds: form.knowledgeCollectionIds,
+                paramOverrides: {
+                    ...(persona?.paramOverrides ?? {}),
+                    temperature: form.temperature,
+                },
             };
             if (persona) {
                 await updatePersona({ ...persona, ...data });
@@ -390,6 +396,59 @@ export default function PersonaFormModal({ persona, onClose, inline = false, onS
                 onChange={id => setForm(f => ({ ...f, modelId: id }))}
                 accentColor={palette.color}
             />
+
+            {/* Temperature */}
+            <div style={{ marginBottom: 24 }}>
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'baseline',
+                    marginBottom: 10,
+                }}>
+                    <label style={{
+                        fontSize: 11,
+                        color: 'rgba(255,255,255,0.4)',
+                        letterSpacing: '0.15em',
+                        textTransform: 'uppercase',
+                        fontFamily: "'Courier New', monospace",
+                    }}>
+                        Temperature
+                    </label>
+                    <span style={{
+                        fontSize: 13,
+                        color: palette.color,
+                        fontFamily: "'Courier New', monospace",
+                        fontWeight: 600,
+                    }}>
+                        {form.temperature.toFixed(2)}
+                    </span>
+                </div>
+                <input
+                    type="range"
+                    min={0.1}
+                    max={1.0}
+                    step={0.01}
+                    value={form.temperature}
+                    onChange={e => setForm(f => ({ ...f, temperature: parseFloat(e.target.value) }))}
+                    style={{
+                        width: '100%',
+                        accentColor: palette.color,
+                        cursor: 'pointer',
+                    }}
+                />
+                <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginTop: 4,
+                    fontSize: 10,
+                    color: 'rgba(255,255,255,0.2)',
+                    fontFamily: "'Courier New', monospace",
+                }}>
+                    <span>0.1 — focused</span>
+                    <span>1.0 — creative</span>
+                </div>
+            </div>
+
             <div style={{ display: 'flex', gap: 12 }}>
                 <button
                     onClick={onClose}
