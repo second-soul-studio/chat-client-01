@@ -44,7 +44,7 @@ export default function BottomNav() {
                         key={item.path}
                         onClick={() => handleNav(item.path)}
                         className="flex flex-col items-center gap-1 py-2 px-6 min-w-[44px] min-h-[44px] transition-all duration-200 rounded-xl hover:bg-[rgba(255,255,255,0.06)] hover:opacity-100"
-                        style={{ opacity: isActive ? 1 : 0.35 }}
+                        style={{ opacity: isActive ? 1 : 0.6 }}
                         aria-label={item.label}
                     >
                         <span
@@ -54,8 +54,8 @@ export default function BottomNav() {
                             {item.icon}
                         </span>
                         <span
-                            className="text-[9px] tracking-widest uppercase font-mono"
-                            style={{ color: isActive ? '#C9A96E' : 'rgba(255,255,255,0.4)' }}
+                            className="text-[11px] tracking-widest uppercase font-mono"
+                            style={{ color: isActive ? '#C9A96E' : 'rgba(255,255,255,0.7)' }}
                         >
                             {item.label}
                         </span>
