@@ -325,7 +325,8 @@ export default function PersonaPage() {
                         <PersonaFormModal
                             persona={persona}
                             inline
-                            onClose={() => { setJustSaved(true); setTimeout(() => setJustSaved(false), 2500); }}
+                            onClose={() => {}}
+                            onSaved={() => { setJustSaved(true); setTimeout(() => setJustSaved(false), 2500); }}
                         />
                     </div>
                 )}

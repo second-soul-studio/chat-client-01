@@ -66,9 +66,11 @@ interface PersonaFormModalProps {
     onClose: () => void;
     /** When true, renders as a scrollable div without backdrop/fixed sheet */
     inline?: boolean;
+    /** Called after a successful save (in addition to onClose). Use in inline mode for save feedback. */
+    onSaved?: () => void;
 }
 
-export default function PersonaFormModal({ persona, onClose, inline = false }: PersonaFormModalProps) {
+export default function PersonaFormModal({ persona, onClose, inline = false, onSaved }: PersonaFormModalProps) {
     const { addPersona, updatePersona, collections } = useAppStore();
 
     const [form, setForm] = useState(() => {
@@ -118,6 +120,7 @@ export default function PersonaFormModal({ persona, onClose, inline = false }: P
             } else {
                 await addPersona(data);
             }
+            onSaved?.();
             onClose();
         } finally {
             setSaving(false);
@@ -152,7 +155,7 @@ export default function PersonaFormModal({ persona, onClose, inline = false }: P
                     placeholder="e.g. Aria"
                     maxLength={32}
                     style={inputStyle()}
-                    autoFocus
+                    autoFocus={!inline}
                 />
             </Field>
 
