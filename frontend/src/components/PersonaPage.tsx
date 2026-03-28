@@ -261,7 +261,7 @@ export default function PersonaPage() {
                     </div>
                     <div>
                         <h2 style={{ margin: 0, fontSize: 20, fontFamily: "'Instrument Serif', Georgia, serif", color: '#fff', fontWeight: 400 }}>
-                            Nostalgia
+                            {persona.name}
                         </h2>
                         <p style={{ margin: 0, fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: "'Courier New', monospace" }}>
                             {persona.name}
