@@ -22,7 +22,7 @@ export default function BottomNav() {
 
     const handleNav = (path: string) => {
         if (path === '/history' && chatPersonaId) {
-            navigate(`/memory/${chatPersonaId}?tab=history`);
+            navigate(`/persona/${chatPersonaId}?tab=history`);
         } else {
             navigate(path);
         }

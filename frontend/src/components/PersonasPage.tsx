@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
@@ -16,17 +17,15 @@ const NEBULA_BLOBS = [
 
 export default function PersonasPage() {
     const { personas, removePersona, reorderPersonas } = useAppStore();
+    const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
-    const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
 
     const openCreate = () => {
-        setEditingPersona(null);
         setModalOpen(true);
     };
 
     const openEdit = (persona: Persona) => {
-        setEditingPersona(persona);
-        setModalOpen(true);
+        navigate(`/persona/${persona.id}?tab=persona`);
     };
 
     const handleArchive = async (persona: Persona) => {
@@ -149,7 +148,7 @@ export default function PersonasPage() {
 
             {modalOpen && (
                 <PersonaFormModal
-                    persona={editingPersona}
+                    persona={null}
                     onClose={() => setModalOpen(false)}
                 />
             )}
