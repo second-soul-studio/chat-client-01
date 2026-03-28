@@ -440,7 +440,7 @@ export async function readStream(
     return { content: fullContent, thinking: fullThinking || undefined };
 }
 
-async function readAnthropicStream(
+export async function readAnthropicStream(
     body: ReadableStream,
     onChunk: ((content: string) => void) | undefined,
     onThinkingChunk?: (thinking: string) => void,

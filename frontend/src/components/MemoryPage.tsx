@@ -37,6 +37,7 @@ export default function MemoryPage() {
     const [pending, setPending] = useState<MemoryPendingEntry[]>([]);
     const [suggested, setSuggested] = useState<MemoryPendingEntry[]>([]);
     const [isConsolidating, setIsConsolidating] = useState(false);
+    const [consolidateRetry, setConsolidateRetry] = useState<{ attempt: number; max: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     // Topic editing
@@ -153,6 +154,7 @@ export default function MemoryPage() {
     const handleConsolidate = async () => {
         if (!personaId || pending.length === 0) return;
         setIsConsolidating(true);
+        setConsolidateRetry(null);
         setError(null);
         try {
             const workerModelId = settings?.memorySettings?.workerModelId;
@@ -164,12 +166,13 @@ export default function MemoryPage() {
                 setError('No model/provider configured for memory consolidation.');
                 return;
             }
-            await consolidateMemory(personaId, provider, model);
+            await consolidateMemory(personaId, provider, model, (attempt, max) => setConsolidateRetry({ attempt, max }));
             await loadData();
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Consolidation failed');
         } finally {
             setIsConsolidating(false);
+            setConsolidateRetry(null);
         }
     };
 
@@ -355,11 +358,24 @@ export default function MemoryPage() {
                                 color: pending.length > 0 ? color : 'rgba(255,255,255,0.25)',
                                 fontSize: 12, fontFamily: "'Courier New', monospace",
                                 cursor: pending.length > 0 && !isConsolidating ? 'pointer' : 'default',
-                                opacity: isConsolidating ? 0.6 : 1,
+                                opacity: isConsolidating ? 0.7 : 1,
                                 transition: 'all 0.2s',
+                                display: 'flex', alignItems: 'center', gap: 6,
                             }}
                         >
-                            {isConsolidating ? '⟳ Consolidating…' : `💾 Consolidate${pending.length > 0 ? ` (${pending.length} pending)` : ''}`}
+                            {isConsolidating ? (
+                                <>
+                                    <span style={{ display: 'inline-block', animation: 'spinSlow 1s linear infinite' }}>⟳</span>
+                                    <span>Consolidating…</span>
+                                    {consolidateRetry && (
+                                        <span style={{ opacity: 0.7, fontSize: 10, letterSpacing: '0.1em' }}>
+                                            retry {consolidateRetry.attempt}/{consolidateRetry.max}
+                                        </span>
+                                    )}
+                                </>
+                            ) : (
+                                `💾 Consolidate${pending.length > 0 ? ` (${pending.length} pending)` : ''}`
+                            )}
                         </button>
                         <button
                             onClick={() => setShowAddForm(v => !v)}

@@ -6,7 +6,7 @@ import {
     getMemoryTopics, saveMemoryTopic, deleteMemoryTopic,
     getAcceptedPendingEntries, clearAcceptedPendingEntries,
 } from '@/services/db';
-import { buildOpenAIHeaders, retry502 } from '@/services/api';
+import { buildOpenAIHeaders, retry502, readStream, readAnthropicStream } from '@/services/api';
 import { proxiedFetch } from '@/services/proxiedFetch';
 import { enqueue } from '@/services/requestQueue';
 import DETECTION_PROMPT from '@/data/prompts/memory-detection.md?raw';
@@ -19,10 +19,11 @@ async function callMemoryWorker(
     userMessage: string,
     provider: Provider,
     model: ModelConfig,
+    onRetry?: (attempt: number, max: number) => void,
 ): Promise<string> {
     return enqueue(
         provider.id,
-        () => _callMemoryWorkerInner(systemPrompt, userMessage, provider, model),
+        () => _callMemoryWorkerInner(systemPrompt, userMessage, provider, model, onRetry),
     );
 }
 
@@ -31,9 +32,10 @@ async function _callMemoryWorkerInner(
     userMessage: string,
     provider: Provider,
     model: ModelConfig,
+    onRetry?: (attempt: number, max: number) => void,
 ): Promise<string> {
     if (provider.adapter === 'anthropic') {
-        return callAnthropic(systemPrompt, userMessage, provider, model);
+        return callAnthropic(systemPrompt, userMessage, provider, model, onRetry);
     }
 
     let baseUrl = provider.baseUrl;
@@ -52,17 +54,17 @@ async function _callMemoryWorkerInner(
             ],
             temperature: 0.3,
             max_tokens: 4096,
-            stream: false,
+            stream: true,
         }),
-    }));
+    }), onRetry);
 
     if (!response.ok) {
         const error = await response.text();
         throw new Error(`Memory worker error ${response.status}: ${error}`);
     }
 
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content ?? '';
+    const { content } = await readStream(response.body!, undefined, undefined);
+    return content;
 }
 
 async function callAnthropic(
@@ -70,6 +72,7 @@ async function callAnthropic(
     userMessage: string,
     provider: Provider,
     model: ModelConfig,
+    onRetry?: (attempt: number, max: number) => void,
 ): Promise<string> {
     const response = await retry502(() => proxiedFetch(`${provider.baseUrl}/messages`, {
         method: 'POST',
@@ -84,18 +87,17 @@ async function callAnthropic(
             messages: [{ role: 'user', content: userMessage }],
             temperature: 0.3,
             max_tokens: 4096,
-            stream: false,
+            stream: true,
         }),
-    }));
+    }), onRetry);
 
     if (!response.ok) {
         const error = await response.text();
         throw new Error(`Memory worker (Anthropic) error ${response.status}: ${error}`);
     }
 
-    const data = await response.json();
-    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
-    return textBlock?.text ?? '';
+    const { content } = await readAnthropicStream(response.body!, undefined, undefined);
+    return content;
 }
 
 // ─── Detection ────────────────────────────────────────────────────────────────
@@ -111,6 +113,7 @@ export async function detectMemories(
         acceptedPending: MemoryPendingEntry[];
         nsfwEnabled: boolean;
     },
+    onRetry?: (attempt: number, max: number) => void,
 ): Promise<MemoryPendingEntry[]> {
     const conversation = messages
         .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
@@ -147,6 +150,7 @@ export async function detectMemories(
         userMessage,
         provider,
         model,
+        onRetry,
     );
 
     const parsed = parseDetectionOutput(raw);
@@ -193,6 +197,7 @@ export async function consolidateMemory(
     personaId: string,
     provider: Provider,
     model: ModelConfig,
+    onRetry?: (attempt: number, max: number) => void,
 ): Promise<void> {
     const meta = await getMemoryMeta(personaId);
     const topics = await getMemoryTopics(personaId);
@@ -221,6 +226,7 @@ export async function consolidateMemory(
         currentState,
         provider,
         model,
+        onRetry,
     );
 
     const result = parseConsolidationOutput(raw);
