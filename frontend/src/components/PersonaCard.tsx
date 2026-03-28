@@ -248,6 +248,25 @@ export function PersonaCard({ persona, index, id, onEdit, onArchive }: PersonaCa
         navigate(`/chat/${persona.id}`);
     };
 
+    const sortableTransformStr = CSS.Transform.toString(transform);
+
+    // Three states:
+    // 1. This card is being dragged: ghost (opacity 0.15), stays in place
+    // 2. Another card is being dragged: displace using sortable transform
+    // 3. Normal: hover lift effect
+    let cardTransform: string | undefined;
+    let cardTransition: string | undefined;
+    if (isDragging) {
+        cardTransform = sortableTransformStr || undefined;
+        cardTransition = transition ?? undefined;
+    } else if (sortableTransformStr) {
+        cardTransform = sortableTransformStr;
+        cardTransition = transition ?? 'transform 250ms cubic-bezier(0.16, 1, 0.3, 1)';
+    } else {
+        cardTransform = hovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)';
+        cardTransition = 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)';
+    }
+
     return (
         <div
             ref={(node) => { setNodeRef(node); (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = node; }}
@@ -260,14 +279,12 @@ export function PersonaCard({ persona, index, id, onEdit, onArchive }: PersonaCa
                 height: 280,
                 borderRadius: 24,
                 background: persona.gradient,
-                border: `1px solid ${hovered || menuOpen ? persona.color + '60' : persona.color + '22'}`,
-                cursor: 'pointer',
-                transform: isDragging
-                    ? CSS.Transform.toString(transform)
-                    : hovered ? 'translateY(-8px) scale(1.02)' : 'translateY(0) scale(1)',
-                transition: isDragging ? transition ?? undefined : 'all 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                opacity: isDragging ? 0.85 : 1,
-                zIndex: isDragging ? 10 : undefined,
+                border: `1px solid ${persona.color}22`,
+                cursor: isDragging ? 'grabbing' : 'pointer',
+                transform: cardTransform,
+                transition: cardTransition,
+                opacity: isDragging ? 0.15 : 1,
+                zIndex: isDragging ? 0 : undefined,
                 boxShadow: hovered || menuOpen
                     ? `0 30px 60px rgba(0,0,0,0.6), 0 0 40px ${persona.glow}, inset 0 1px 0 ${persona.color}30`
                     : `0 10px 30px rgba(0,0,0,0.4), inset 0 1px 0 ${persona.color}15`,
@@ -426,6 +443,108 @@ export function PersonaCard({ persona, index, id, onEdit, onArchive }: PersonaCa
                     onNostalgia={() => { navigate(`/persona/${persona.id}`); setMenuOpen(false); }}
                 />
             )}
+        </div>
+    );
+}
+
+// ─── Drag Overlay Card ────────────────────────────────────────────────────────
+
+export function PersonaCardOverlay({ persona }: { persona: Persona }) {
+    return (
+        // Outer wrapper: exact card dimensions, no transform — dnd-kit uses this for positioning
+        <div style={{ width: 200, height: 280, position: 'relative', flexShrink: 0 }}>
+        {/* Inner wrapper: visual lift — scale + rotate without affecting dnd-kit's coordinate maths */}
+        <div
+            style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: 24,
+                background: persona.gradient,
+                border: `1px solid ${persona.color}60`,
+                cursor: 'grabbing',
+                transform: 'scale(1.05) rotate(3deg)',
+                transformOrigin: 'center center',
+                boxShadow: `0 40px 80px rgba(0,0,0,0.7), 0 0 60px ${persona.glow}, inset 0 1px 0 ${persona.color}40`,
+                overflow: 'visible',
+            }}
+        >
+            <BreathingOrb glow={persona.glow} active={true} />
+            <FloatingParticles color={persona.color} active={true} />
+
+            {/* Avatar circle */}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 36,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    width: 90,
+                    height: 90,
+                    borderRadius: '50%',
+                    background: `radial-gradient(circle at 35% 35%, ${persona.color}44 0%, ${persona.color}11 60%, transparent 100%)`,
+                    border: `2px solid ${persona.color}55`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 0 30px ${persona.glow}, inset 0 0 20px ${persona.color}22`,
+                }}
+            >
+                {persona.avatarUrl ? (
+                    <img
+                        src={persona.avatarUrl}
+                        alt={persona.name}
+                        style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }}
+                    />
+                ) : (
+                    <span
+                        style={{
+                            fontSize: 36,
+                            fontFamily: "'Instrument Serif', Georgia, serif",
+                            color: persona.color,
+                            opacity: 0.9,
+                            textShadow: `0 0 20px ${persona.color}`,
+                        }}
+                    >
+                        {persona.name[0]}
+                    </span>
+                )}
+                <div style={{ position: 'absolute', inset: -4, borderRadius: '50%', border: `1px solid ${persona.color}30`, animation: 'spinSlow 8s linear infinite' }} />
+                <div style={{ position: 'absolute', inset: -8, borderRadius: '50%', border: `1px solid ${persona.color}15`, animation: 'spinSlow 12s linear infinite reverse' }} />
+            </div>
+
+            {/* Name & tagline */}
+            <div style={{ position: 'absolute', bottom: 72, left: 0, right: 0, textAlign: 'center', padding: '0 16px' }}>
+                <div style={{ fontSize: 22, fontFamily: "'Instrument Serif', Georgia, serif", color: '#ffffff', letterSpacing: '0.02em', textShadow: `0 0 20px ${persona.color}66` }}>
+                    {persona.name}
+                </div>
+                <div style={{ fontSize: 10, color: persona.color, letterSpacing: '0.2em', textTransform: 'uppercase', marginTop: 4, opacity: 0.8, fontFamily: "'Courier New', monospace" }}>
+                    {persona.tagline}
+                </div>
+            </div>
+
+            {/* Menu button (non-interactive, just visual) */}
+            <div
+                style={{
+                    position: 'absolute',
+                    bottom: 16,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: `${persona.color}22`,
+                    border: `1px solid ${persona.color}66`,
+                    borderRadius: 20,
+                    padding: '8px 28px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 5,
+                }}
+            >
+                {[0, 1, 2].map(i => (
+                    <div key={i} style={{ width: 18, height: 1.5, background: persona.color, borderRadius: 2 }} />
+                ))}
+            </div>
+        </div>
         </div>
     );
 }

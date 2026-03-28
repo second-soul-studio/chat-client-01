@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { DndContext, closestCenter, type DragEndEvent } from '@dnd-kit/core';
+import { DndContext, DragOverlay, closestCenter, type DragEndEvent, type DragStartEvent } from '@dnd-kit/core';
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { useAppStore } from '@/stores/appStore';
-import { PersonaCard, AddPersonaCard } from './PersonaCard';
+import { PersonaCard, PersonaCardOverlay, AddPersonaCard } from './PersonaCard';
 import PersonaFormModal from './PersonaFormModal';
 import type { Persona } from '@/types';
 
@@ -19,6 +19,7 @@ export default function PersonasPage() {
     const { personas, removePersona, reorderPersonas } = useAppStore();
     const navigate = useNavigate();
     const [modalOpen, setModalOpen] = useState(false);
+    const [activePersona, setActivePersona] = useState<Persona | null>(null);
 
     const openCreate = () => {
         setModalOpen(true);
@@ -32,7 +33,13 @@ export default function PersonasPage() {
         await removePersona(persona.id);
     };
 
+    const handleDragStart = (event: DragStartEvent) => {
+        const persona = personas.find(p => p.id === event.active.id);
+        setActivePersona(persona ?? null);
+    };
+
     const handleDragEnd = async (event: DragEndEvent) => {
+        setActivePersona(null);
         const { active, over } = event;
         if (!over || active.id === over.id) return;
         const oldIndex = personas.findIndex(p => p.id === active.id);
@@ -120,7 +127,7 @@ export default function PersonasPage() {
             </div>
 
             {/* Persona cards grid */}
-            <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <SortableContext items={personas.map(p => p.id)} strategy={rectSortingStrategy}>
                     <div
                         style={{
@@ -144,6 +151,9 @@ export default function PersonasPage() {
                         )}
                     </div>
                 </SortableContext>
+                <DragOverlay dropAnimation={{ duration: 200, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                    {activePersona ? <PersonaCardOverlay persona={activePersona} /> : null}
+                </DragOverlay>
             </DndContext>
 
             {modalOpen && (

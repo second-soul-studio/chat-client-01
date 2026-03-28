@@ -1,0 +1,60 @@
+<h2>Schriftart in den Chat-Bubbles</h2>
+<p class="subtitle">Welche Schriftart soll für Nachrichten verwendet werden?</p>
+
+<div class="cards">
+  <div class="card" data-choice="serif" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 20px; background: #0f0b18; border-radius: 8px;">
+      <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px;">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #1a1328; border-radius: 4px 14px 14px 14px; padding: 12px 16px; max-width: 300px;">
+          <p style="margin: 0; font-family: 'Lora', Georgia, serif; font-size: 14px; color: #e8e0d4; line-height: 1.65;">
+            Das ist eine längere Nachricht, um die Lesbarkeit der Schriftart zu beurteilen. Ich denke, wir sollten das heute noch besprechen — was meinst du?
+          </p>
+          <p style="margin: 6px 0 0; font-family: 'Courier New', monospace; font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: 0.05em;">14:32</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: flex-start; flex-direction: row-reverse;">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #3a3040; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #2a2040; border-radius: 14px 4px 14px 14px; padding: 12px 16px; max-width: 300px;">
+          <p style="margin: 0; font-family: 'Lora', Georgia, serif; font-size: 14px; color: #e8e0d4; line-height: 1.65;">
+            Natürlich! Serif-Schriften haben eine warme, klassische Note — sie erinnern an gedruckten Text und fühlen sich vertraut an.
+          </p>
+          <p style="margin: 6px 0 0; font-family: 'Courier New', monospace; font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: 0.05em; text-align: right;">14:33</p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Serif — Lora (aktuell)</h3>
+      <p>Warm, klassisch, lesefreundlich für längere Texte. Gut geeignet für Gespräche, die sich wie gedruckten Text anfühlen sollen.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="sans-serif" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 20px; background: #0f0b18; border-radius: 8px;">
+      <div style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 16px;">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #1a1328; border-radius: 4px 14px 14px 14px; padding: 12px 16px; max-width: 300px;">
+          <p style="margin: 0; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; color: #e8e0d4; line-height: 1.65;">
+            Das ist eine längere Nachricht, um die Lesbarkeit der Schriftart zu beurteilen. Ich denke, wir sollten das heute noch besprechen — was meinst du?
+          </p>
+          <p style="margin: 6px 0 0; font-family: 'Courier New', monospace; font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: 0.05em;">14:32</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: flex-start; flex-direction: row-reverse;">
+        <div style="width: 28px; height: 28px; border-radius: 50%; background: #3a3040; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #2a2040; border-radius: 14px 4px 14px 14px; padding: 12px 16px; max-width: 300px;">
+          <p style="margin: 0; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; color: #e8e0d4; line-height: 1.65;">
+            Natürlich! Sans-Serif wirkt moderner und klarer — typisch für Messenger-Apps und digitale Interfaces.
+          </p>
+          <p style="margin: 6px 0 0; font-family: 'Courier New', monospace; font-size: 9px; color: rgba(255,255,255,0.2); letter-spacing: 0.05em; text-align: right;">14:33</p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Sans-Serif — Inter / System-UI</h3>
+      <p>Modern, klar, vertraut aus Messenger-Apps. Inter wird von Google Fonts geladen — kein Fallback nötig, da überall verfügbar.</p>
+    </div>
+  </div>
+</div>
+
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500&display=swap" rel="stylesheet">

@@ -1,0 +1,66 @@
+<h2>Zeilenabstand in Chat-Bubbles</h2>
+<p class="subtitle">Aktueller Wert ist 1.65 — welche Abstufungen sollen angeboten werden?</p>
+
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+
+<div class="cards">
+  <div class="card" data-choice="normal" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px 20px; background: #0f0b18; border-radius: 8px;">
+      <div style="display: flex; gap: 10px; align-items: flex-start;">
+        <div style="width: 26px; height: 26px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #1a1328; border-radius: 4px 14px 14px 14px; padding: 12px 16px;">
+          <p style="margin: 0; font-family: 'Lora', Georgia, serif; font-size: 14px; color: #e8e0d4; line-height: 1.5;">
+            Das ist ein Beispieltext mit normalem Zeilenabstand.<br>
+            Dieser Wert ist Standard nach WCAG-Richtlinien und der Baseline für gute Lesbarkeit im Web.<br>
+            Kompakt, aber angenehm.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Normal — 1.5</h3>
+      <p>WCAG-Standard. Etwas kompakter als bisher, aber gut lesbar. Mehr Text auf einmal sichtbar.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="comfortable" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px 20px; background: #0f0b18; border-radius: 8px; position: relative;">
+      <div style="position: absolute; top: 8px; right: 8px; background: #7c5cbf44; border: 1px solid #7c5cbf88; border-radius: 4px; padding: 2px 8px; font-size: 10px; color: #c4a8ff; font-family: monospace;">aktuell: 1.65</div>
+      <div style="display: flex; gap: 10px; align-items: flex-start;">
+        <div style="width: 26px; height: 26px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #1a1328; border-radius: 4px 14px 14px 14px; padding: 12px 16px;">
+          <p style="margin: 0; font-family: 'Lora', Georgia, serif; font-size: 14px; color: #e8e0d4; line-height: 1.65;">
+            Das ist ein Beispieltext mit komfortablem Zeilenabstand.<br>
+            Dieser Wert ist der aktuelle Standard in Second Soul — ausgewogen zwischen Dichte und Luft.<br>
+            Angenehm für längere Gespräche.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Comfortable — 1.65 (aktuell)</h3>
+      <p>Bewährt, ausgewogen. Gut für längere Texte, ohne zu luftig zu wirken.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="spacious" onclick="toggleSelect(this)">
+    <div class="card-image" style="padding: 16px 20px; background: #0f0b18; border-radius: 8px;">
+      <div style="display: flex; gap: 10px; align-items: flex-start;">
+        <div style="width: 26px; height: 26px; border-radius: 50%; background: #7c5cbf; flex-shrink: 0; margin-top: 2px;"></div>
+        <div style="background: #1a1328; border-radius: 4px 14px 14px 14px; padding: 12px 16px;">
+          <p style="margin: 0; font-family: 'Lora', Georgia, serif; font-size: 14px; color: #e8e0d4; line-height: 1.9;">
+            Das ist ein Beispieltext mit großzügigem Zeilenabstand.<br>
+            Dieser Wert gibt jedem Satz mehr Luft zum Atmen — ideal für Menschen, die es etwas offener mögen oder Sehschwächen haben.<br>
+            Entspannt zu lesen.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Spacious — 1.9</h3>
+      <p>Offen, luftig. Gut für Accessibility und Menschen, die mehr Abstand bevorzugen.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top: 24px;">Mein Vorschlag: die mittlere Option (1.65) als Default "Normal" beibehalten, dann 1.9 als "Large" und evtl. 2.1 als "Very Large" — oder nur 3 Stufen wie hier gezeigt.</p>
