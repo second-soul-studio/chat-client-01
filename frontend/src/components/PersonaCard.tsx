@@ -7,7 +7,7 @@ import type { Persona } from '@/types';
 const MENU_ITEMS = [
     { icon: '◎', label: 'Nostalgia', sub: 'memory & history' },
     { icon: '⟡', label: 'Persona', sub: 'edit character' },
-    { icon: '⊹', label: 'Archive', sub: 'saved moments' },
+    { icon: '✕', label: 'Delete', sub: 'remove persona' },
 ] as const;
 
 // ─── Sub-components ────────────────────────────────────────────────────────────
@@ -423,7 +423,7 @@ export function PersonaCard({ persona, index, id, onEdit, onArchive }: PersonaCa
                     onClose={() => setMenuOpen(false)}
                     onEdit={() => { onEdit?.(persona); setMenuOpen(false); }}
                     onArchive={() => onArchive?.(persona)}
-                    onNostalgia={() => { navigate(`/memory/${persona.id}`); setMenuOpen(false); }}
+                    onNostalgia={() => { navigate(`/persona/${persona.id}`); setMenuOpen(false); }}
                 />
             )}
         </div>
