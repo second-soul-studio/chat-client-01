@@ -503,8 +503,10 @@ export default function ChatPage() {
                     ←
                 </button>
 
-                {/* Avatar */}
-                <div
+                {/* Avatar — click to open persona page */}
+                <button
+                    onClick={() => navigate(`/persona/${personaId}`)}
+                    aria-label={`Open ${persona.name} settings`}
                     style={{
                         width: 36,
                         height: 36,
@@ -518,6 +520,17 @@ export default function ChatPage() {
                         fontFamily: "'Instrument Serif', Georgia, serif",
                         color: persona.color,
                         boxShadow: `0 0 10px ${persona.glow}`,
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    }}
+                    onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)';
+                        (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 18px ${persona.glow}`;
+                    }}
+                    onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)';
+                        (e.currentTarget as HTMLButtonElement).style.boxShadow = `0 0 10px ${persona.glow}`;
                     }}
                 >
                     {persona.avatarUrl ? (
@@ -525,7 +538,7 @@ export default function ChatPage() {
                     ) : (
                         persona.name[0]
                     )}
-                </div>
+                </button>
 
                 <div>
                     <div style={{ fontSize: 15, fontFamily: "'Instrument Serif', Georgia, serif", color: '#ffffff' }}>
@@ -538,7 +551,7 @@ export default function ChatPage() {
 
                 {suggestedEntries.length > 0 && (
                     <button
-                        onClick={() => navigate(`/persona/${personaId}/memory`)}
+                        onClick={() => navigate(`/persona/${personaId}`)}
                         style={{
                             marginLeft: 'auto',
                             padding: '3px 10px',
