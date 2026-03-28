@@ -64,9 +64,11 @@ interface PersonaFormModalProps {
     /** Pass an existing persona to enter edit mode; null for create mode */
     persona?: Persona | null;
     onClose: () => void;
+    /** When true, renders as a scrollable div without backdrop/fixed sheet */
+    inline?: boolean;
 }
 
-export default function PersonaFormModal({ persona, onClose }: PersonaFormModalProps) {
+export default function PersonaFormModal({ persona, onClose, inline = false }: PersonaFormModalProps) {
     const { addPersona, updatePersona, collections } = useAppStore();
 
     const [form, setForm] = useState(() => {
@@ -122,6 +124,319 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
         }
     };
 
+    const formBody = (
+        <div>
+            {/* Header */}
+            <div style={{ marginBottom: 8, textAlign: 'center' }}>
+                <h2
+                    style={{
+                        fontFamily: "'Instrument Serif', Georgia, serif",
+                        fontSize: 22,
+                        color: '#fff',
+                        fontWeight: 400,
+                        margin: 0,
+                    }}
+                >
+                    {persona ? 'Edit Persona' : 'New Persona'}
+                </h2>
+            </div>
+
+            <SectionHeader label="Identity" />
+
+            {/* Name */}
+            <Field label="Name">
+                <input
+                    type="text"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="e.g. Aria"
+                    maxLength={32}
+                    style={inputStyle()}
+                    autoFocus
+                />
+            </Field>
+
+            {/* Tagline */}
+            <Field label="Tagline">
+                <input
+                    type="text"
+                    value={form.tagline}
+                    onChange={e => setForm(f => ({ ...f, tagline: e.target.value }))}
+                    placeholder="e.g. your thoughtful companion"
+                    maxLength={64}
+                    style={inputStyle()}
+                />
+            </Field>
+
+            <SectionHeader label="Character" />
+
+            {/* System prompt */}
+            <Field label="Personality Prompt">
+                <textarea
+                    value={form.systemPrompt}
+                    onChange={e => setForm(f => ({ ...f, systemPrompt: e.target.value }))}
+                    placeholder="Describe how this persona thinks, feels, and speaks…"
+                    rows={5}
+                    style={{
+                        ...inputStyle(),
+                        resize: 'none',
+                        lineHeight: 1.6,
+                    }}
+                />
+            </Field>
+
+            {/* Show thinking toggle */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    marginBottom: 16,
+                }}
+            >
+                <div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Show Thinking</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Display chain-of-thought blocks</div>
+                </div>
+                <Toggle
+                    checked={form.showThinking}
+                    color={palette.color}
+                    onChange={v => setForm(f => ({ ...f, showThinking: v }))}
+                />
+            </div>
+
+            {/* Thinking Enabled */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    marginBottom: 8,
+                }}
+            >
+                <div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Enable Thinking by Default</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Use CoT / thinking mode when starting new chats</div>
+                </div>
+                <Toggle
+                    checked={form.thinkingEnabled}
+                    color={palette.color}
+                    onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
+                />
+            </div>
+
+            {/* Soft CoT toggle */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    marginBottom: 4,
+                }}
+            >
+                <div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Soft CoT</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Instructs non-native reasoning models to think via &lt;think&gt; tags</div>
+                </div>
+                <Toggle
+                    checked={form.softCotEnabled}
+                    color={palette.color}
+                    onChange={v => setForm(f => ({ ...f, softCotEnabled: v }))}
+                />
+            </div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 16, paddingLeft: 2 }}>
+                Also enable "Show Thinking" to see the reasoning block
+            </div>
+
+            {/* Memory toggle */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    marginBottom: 8,
+                }}
+            >
+                <div>
+                    <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Memory</div>
+                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Remember things from your conversations</div>
+                </div>
+                <Toggle
+                    checked={form.memoryEnabled}
+                    color={palette.color}
+                    onChange={v => setForm(f => ({ ...f, memoryEnabled: v }))}
+                />
+            </div>
+
+            <SectionHeader label="Knowledge" />
+
+            {collections.length === 0 ? (
+                <div style={{
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    background: 'rgba(255,255,255,0.02)',
+                    fontSize: 12,
+                    color: 'rgba(255,255,255,0.3)',
+                    fontStyle: 'italic',
+                    marginBottom: 16,
+                }}>
+                    No collections yet — create one in the Knowledge section.
+                </div>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
+                    {collections.map(c => {
+                        const checked = form.knowledgeCollectionIds.includes(c.id);
+                        return (
+                            <div
+                                key={c.id}
+                                onClick={() => setForm(f => ({
+                                    ...f,
+                                    knowledgeCollectionIds: checked
+                                        ? f.knowledgeCollectionIds.filter(id => id !== c.id)
+                                        : [...f.knowledgeCollectionIds, c.id],
+                                }))}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 12,
+                                    padding: '10px 12px',
+                                    borderRadius: 10,
+                                    border: checked
+                                        ? `1px solid ${palette.color}40`
+                                        : '1px solid rgba(255,255,255,0.07)',
+                                    background: checked ? `${palette.color}0d` : 'rgba(255,255,255,0.03)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s ease',
+                                }}
+                            >
+                                <div style={{
+                                    width: 16,
+                                    height: 16,
+                                    borderRadius: 4,
+                                    border: checked ? `2px solid ${palette.color}` : '2px solid rgba(255,255,255,0.2)',
+                                    background: checked ? palette.color : 'transparent',
+                                    flexShrink: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s ease',
+                                }}>
+                                    {checked && (
+                                        <span style={{ color: '#07050c', fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>
+                                    )}
+                                </div>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ fontSize: 13, color: checked ? '#fff' : 'rgba(255,255,255,0.75)' }}>
+                                        {c.name}
+                                    </div>
+                                    <div style={{
+                                        fontSize: 10,
+                                        color: 'rgba(255,255,255,0.25)',
+                                        fontFamily: "'Courier New', monospace",
+                                        marginTop: 2,
+                                    }}>
+                                        {c.embeddingModelSlug}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            <SectionHeader label="Appearance" />
+
+            {/* Colour palette */}
+            <Field label="Soul Colour">
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {PALETTES.map((p, i) => (
+                        <button
+                            key={i}
+                            onClick={() => setForm(f => ({ ...f, paletteIndex: i }))}
+                            title={p.name}
+                            style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: '50%',
+                                background: p.color,
+                                border: form.paletteIndex === i
+                                    ? `2px solid #fff`
+                                    : '2px solid transparent',
+                                cursor: 'pointer',
+                                outline: form.paletteIndex === i ? `2px solid ${p.color}` : 'none',
+                                outlineOffset: 2,
+                                boxShadow: form.paletteIndex === i ? `0 0 12px ${p.glow}` : 'none',
+                                transition: 'all 0.2s ease',
+                                flexShrink: 0,
+                            }}
+                        />
+                    ))}
+                </div>
+            </Field>
+
+            <SectionHeader label="Model" />
+
+            {/* Model picker */}
+            <ModelPicker
+                value={form.modelId}
+                onChange={id => setForm(f => ({ ...f, modelId: id }))}
+                accentColor={palette.color}
+            />
+            <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                    onClick={onClose}
+                    style={{
+                        flex: 1,
+                        padding: '14px 0',
+                        borderRadius: 12,
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        background: 'transparent',
+                        color: 'rgba(255,255,255,0.5)',
+                        fontSize: 14,
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                    }}
+                >
+                    Cancel
+                </button>
+                <button
+                    onClick={handleSave}
+                    disabled={!form.name.trim() || saving}
+                    style={{
+                        flex: 2,
+                        padding: '14px 0',
+                        borderRadius: 12,
+                        border: 'none',
+                        background: !form.name.trim() || saving ? 'rgba(255,255,255,0.1)' : palette.color,
+                        color: !form.name.trim() || saving ? 'rgba(255,255,255,0.3)' : '#07050c',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: !form.name.trim() || saving ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.2s ease',
+                        fontFamily: "'Courier New', monospace",
+                        letterSpacing: '0.1em',
+                        textTransform: 'uppercase' as const,
+                    }}
+                >
+                    {saving ? '…' : persona ? 'Save Changes' : 'Create Persona'}
+                </button>
+            </div>
+        </div>
+    );
+
+    if (inline) {
+        return (
+            <div style={{ padding: '8px 24px 24px', overflowY: 'auto' }}>
+                {formBody}
+            </div>
+        );
+    }
+
     return (
         <>
             {/* Backdrop */}
@@ -160,306 +475,7 @@ export default function PersonaFormModal({ persona, onClose }: PersonaFormModalP
                 </div>
 
                 <div style={{ padding: '8px 24px 24px' }}>
-                    {/* Header */}
-                    <div style={{ marginBottom: 8, textAlign: 'center' }}>
-                        <h2
-                            style={{
-                                fontFamily: "'Instrument Serif', Georgia, serif",
-                                fontSize: 22,
-                                color: '#fff',
-                                fontWeight: 400,
-                                margin: 0,
-                            }}
-                        >
-                            {persona ? 'Edit Persona' : 'New Persona'}
-                        </h2>
-                    </div>
-
-                    <SectionHeader label="Identity" />
-
-                    {/* Name */}
-                    <Field label="Name">
-                        <input
-                            type="text"
-                            value={form.name}
-                            onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                            placeholder="e.g. Aria"
-                            maxLength={32}
-                            style={inputStyle()}
-                            autoFocus
-                        />
-                    </Field>
-
-                    {/* Tagline */}
-                    <Field label="Tagline">
-                        <input
-                            type="text"
-                            value={form.tagline}
-                            onChange={e => setForm(f => ({ ...f, tagline: e.target.value }))}
-                            placeholder="e.g. your thoughtful companion"
-                            maxLength={64}
-                            style={inputStyle()}
-                        />
-                    </Field>
-
-                    <SectionHeader label="Character" />
-
-                    {/* System prompt */}
-                    <Field label="Personality Prompt">
-                        <textarea
-                            value={form.systemPrompt}
-                            onChange={e => setForm(f => ({ ...f, systemPrompt: e.target.value }))}
-                            placeholder="Describe how this persona thinks, feels, and speaks…"
-                            rows={5}
-                            style={{
-                                ...inputStyle(),
-                                resize: 'none',
-                                lineHeight: 1.6,
-                            }}
-                        />
-                    </Field>
-
-                    {/* Show thinking toggle */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 0',
-                            marginBottom: 16,
-                        }}
-                    >
-                        <div>
-                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Show Thinking</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Display chain-of-thought blocks</div>
-                        </div>
-                        <Toggle
-                            checked={form.showThinking}
-                            color={palette.color}
-                            onChange={v => setForm(f => ({ ...f, showThinking: v }))}
-                        />
-                    </div>
-
-                    {/* Thinking Enabled */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 0',
-                            marginBottom: 8,
-                        }}
-                    >
-                        <div>
-                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Enable Thinking by Default</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Use CoT / thinking mode when starting new chats</div>
-                        </div>
-                        <Toggle
-                            checked={form.thinkingEnabled}
-                            color={palette.color}
-                            onChange={v => setForm(f => ({ ...f, thinkingEnabled: v }))}
-                        />
-                    </div>
-
-                    {/* Soft CoT toggle */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 0',
-                            marginBottom: 4,
-                        }}
-                    >
-                        <div>
-                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Soft CoT</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Instructs non-native reasoning models to think via &lt;think&gt; tags</div>
-                        </div>
-                        <Toggle
-                            checked={form.softCotEnabled}
-                            color={palette.color}
-                            onChange={v => setForm(f => ({ ...f, softCotEnabled: v }))}
-                        />
-                    </div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', marginBottom: 16, paddingLeft: 2 }}>
-                        Also enable "Show Thinking" to see the reasoning block
-                    </div>
-
-                    {/* Memory toggle */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '12px 0',
-                            marginBottom: 8,
-                        }}
-                    >
-                        <div>
-                            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)' }}>Memory</div>
-                            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', marginTop: 2 }}>Remember things from your conversations</div>
-                        </div>
-                        <Toggle
-                            checked={form.memoryEnabled}
-                            color={palette.color}
-                            onChange={v => setForm(f => ({ ...f, memoryEnabled: v }))}
-                        />
-                    </div>
-
-                    <SectionHeader label="Knowledge" />
-
-                    {collections.length === 0 ? (
-                        <div style={{
-                            padding: '12px 14px',
-                            borderRadius: 10,
-                            border: '1px solid rgba(255,255,255,0.06)',
-                            background: 'rgba(255,255,255,0.02)',
-                            fontSize: 12,
-                            color: 'rgba(255,255,255,0.3)',
-                            fontStyle: 'italic',
-                            marginBottom: 16,
-                        }}>
-                            No collections yet — create one in the Knowledge section.
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 16 }}>
-                            {collections.map(c => {
-                                const checked = form.knowledgeCollectionIds.includes(c.id);
-                                return (
-                                    <div
-                                        key={c.id}
-                                        onClick={() => setForm(f => ({
-                                            ...f,
-                                            knowledgeCollectionIds: checked
-                                                ? f.knowledgeCollectionIds.filter(id => id !== c.id)
-                                                : [...f.knowledgeCollectionIds, c.id],
-                                        }))}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: 12,
-                                            padding: '10px 12px',
-                                            borderRadius: 10,
-                                            border: checked
-                                                ? `1px solid ${palette.color}40`
-                                                : '1px solid rgba(255,255,255,0.07)',
-                                            background: checked ? `${palette.color}0d` : 'rgba(255,255,255,0.03)',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.15s ease',
-                                        }}
-                                    >
-                                        <div style={{
-                                            width: 16,
-                                            height: 16,
-                                            borderRadius: 4,
-                                            border: checked ? `2px solid ${palette.color}` : '2px solid rgba(255,255,255,0.2)',
-                                            background: checked ? palette.color : 'transparent',
-                                            flexShrink: 0,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'all 0.15s ease',
-                                        }}>
-                                            {checked && (
-                                                <span style={{ color: '#07050c', fontSize: 10, fontWeight: 700, lineHeight: 1 }}>✓</span>
-                                            )}
-                                        </div>
-                                        <div style={{ minWidth: 0, flex: 1 }}>
-                                            <div style={{ fontSize: 13, color: checked ? '#fff' : 'rgba(255,255,255,0.75)' }}>
-                                                {c.name}
-                                            </div>
-                                            <div style={{
-                                                fontSize: 10,
-                                                color: 'rgba(255,255,255,0.25)',
-                                                fontFamily: "'Courier New', monospace",
-                                                marginTop: 2,
-                                            }}>
-                                                {c.embeddingModelSlug}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-
-                    <SectionHeader label="Appearance" />
-
-                    {/* Colour palette */}
-                    <Field label="Soul Colour">
-                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                            {PALETTES.map((p, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setForm(f => ({ ...f, paletteIndex: i }))}
-                                    title={p.name}
-                                    style={{
-                                        width: 32,
-                                        height: 32,
-                                        borderRadius: '50%',
-                                        background: p.color,
-                                        border: form.paletteIndex === i
-                                            ? `2px solid #fff`
-                                            : '2px solid transparent',
-                                        cursor: 'pointer',
-                                        outline: form.paletteIndex === i ? `2px solid ${p.color}` : 'none',
-                                        outlineOffset: 2,
-                                        boxShadow: form.paletteIndex === i ? `0 0 12px ${p.glow}` : 'none',
-                                        transition: 'all 0.2s ease',
-                                        flexShrink: 0,
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    </Field>
-
-                    <SectionHeader label="Model" />
-
-                    {/* Model picker */}
-                    <ModelPicker
-                        value={form.modelId}
-                        onChange={id => setForm(f => ({ ...f, modelId: id }))}
-                        accentColor={palette.color}
-                    />
-                    <div style={{ display: 'flex', gap: 12 }}>
-                        <button
-                            onClick={onClose}
-                            style={{
-                                flex: 1,
-                                padding: '14px 0',
-                                borderRadius: 12,
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                background: 'transparent',
-                                color: 'rgba(255,255,255,0.5)',
-                                fontSize: 14,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                            }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={!form.name.trim() || saving}
-                            style={{
-                                flex: 2,
-                                padding: '14px 0',
-                                borderRadius: 12,
-                                border: 'none',
-                                background: !form.name.trim() || saving ? 'rgba(255,255,255,0.1)' : palette.color,
-                                color: !form.name.trim() || saving ? 'rgba(255,255,255,0.3)' : '#07050c',
-                                fontSize: 14,
-                                fontWeight: 600,
-                                cursor: !form.name.trim() || saving ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s ease',
-                                fontFamily: "'Courier New', monospace",
-                                letterSpacing: '0.1em',
-                                textTransform: 'uppercase' as const,
-                            }}
-                        >
-                            {saving ? '…' : persona ? 'Save Changes' : 'Create Persona'}
-                        </button>
-                    </div>
+                    {formBody}
                 </div>
             </div>
         </>
